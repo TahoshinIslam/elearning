@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
-import { joinLiveClass, errResponse } from '@/lib/repo';
+import { joinLiveClass, errResponse, HttpError } from '@/lib/repo';
+import { requireUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/live-classes/{id}/join?studentId=1  → server access check → { url } or error
+// GET /api/live-classes/{id}/join  → server access check → { url } or error.
+// The student is taken from the authenticated session, never a query param,
+// so a student can't probe another student's enrollment.
 export async function GET(request, { params }) {
   try {
-    const data = await joinLiveClass(Number(params.id), Number(request.nextUrl.searchParams.get('studentId')));
+    const session = requireUser();
+    const studentId = session.studentId;
+    if (!studentId) throw new HttpError(403, { error: 'not_a_student' });
+    const data = await joinLiveClass(Number(params.id), Number(studentId));
     return NextResponse.json(data);
   } catch (e) { return errResponse(e); }
 }

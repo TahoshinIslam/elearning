@@ -1,7 +1,7 @@
 import { Hind_Siliguri, Archivo } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
-import PrototypeBar from '@/components/PrototypeBar';
+import MaintenanceBanner from '@/components/MaintenanceBanner';
 import Toast from '@/components/Toast';
 
 const hind = Hind_Siliguri({
@@ -19,9 +19,9 @@ const archivo = Archivo({
 });
 
 export const metadata = {
-  title: 'Leo Learning — কোচিং সেন্টারের সম্পূর্ণ প্ল্যাটফর্ম',
+  title: 'Leo Learning — অনলাইন কোর্স প্ল্যাটফর্ম',
   description:
-    'Multi-tenant SaaS platform for Bangladeshi coaching centers — batches, live classes, bKash payments, parent monitoring, and course selling in one place.'
+    'Buy recorded & live courses with lifetime access — live classes on Zoom, recordings, quizzes and certificates in one place.'
 };
 
 export default function RootLayout({ children }) {
@@ -29,7 +29,7 @@ export default function RootLayout({ children }) {
     <html lang="bn" className={`${hind.variable} ${archivo.variable}`}>
       <body>
         <AppProvider>
-          <PrototypeBar />
+          <MaintenanceBanner />
           {children}
           <Toast />
         </AppProvider>

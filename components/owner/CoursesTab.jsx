@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import Icon from '@/components/Icon';
 
 const LESSON_TYPES = [
-  { key: 'video', icon: '▶', chip: 'chip-orange' },
-  { key: 'pdf', icon: '📄', chip: 'chip-stone' },
-  { key: 'quiz', icon: '❓', chip: 'chip-violet' },
-  { key: 'assignment', icon: '✍', chip: 'chip-green' }
+  { key: 'video', icon: 'play', chip: 'chip-orange' },
+  { key: 'pdf', icon: 'file', chip: 'chip-stone' },
+  { key: 'quiz', icon: 'help', chip: 'chip-violet' },
+  { key: 'assignment', icon: 'edit', chip: 'chip-green' }
 ];
 
 const inputStyle = {
@@ -29,6 +30,51 @@ export default function CoursesTab() {
   const [moduleDraft, setModuleDraft] = useState({}); // { [courseId]: title }
   const [lessonDraft, setLessonDraft] = useState({}); // { [moduleId]: { title, type } }
   const [collapsed, setCollapsed] = useState({}); // { [courseId]: true }
+  const [editCourse, setEditCourse] = useState(null); // { id, title, price, oldPrice, category }
+  const [editModule, setEditModule] = useState(null); // { id, title }
+  const [editLesson, setEditLesson] = useState(null); // { id, title }
+  const [drag, setDrag] = useState(null); // { moduleId, lessonId }
+  const [cats, setCats] = useState([]);   // managed categories (so new ones are selectable)
+
+  useEffect(() => { api.getCategories().then(setCats).catch(() => {}); }, []);
+
+  // drag-drop: drop lesson `drag` before `targetLessonId`, persist the new order
+  const onLessonDrop = async (courseId, module, targetLessonId) => {
+    if (!drag || drag.moduleId !== module.id || drag.lessonId === targetLessonId) { setDrag(null); return; }
+    const ids = module.lessons.map((l) => l.id).filter((id) => id !== drag.lessonId);
+    const at = ids.indexOf(targetLessonId);
+    ids.splice(at < 0 ? ids.length : at, 0, drag.lessonId);
+    setDrag(null);
+    await api.reorderLessons(courseId, module.id, ids);
+  };
+
+  const startEdit = (c) => setEditCourse({
+    id: c.id, title: c.title, price: c.price ?? 0, oldPrice: c.oldPrice ?? '', category: c.category || '',
+    level: c.level || '', language: c.language || '', duration: c.duration || '', thumb: c.thumb || '',
+    instructor: c.instructor || '', mode: c.mode || 'live', tagline: c.tagline || '', description: c.description || '',
+    completionThreshold: c.completionThreshold ?? 80
+  });
+  const saveEdit = async () => {
+    const { id, ...patch } = editCourse;
+    setEditCourse(null);
+    await api.updateCourse(id, patch);
+    showToast(t.cbCourseUpdated);
+  };
+  const removeCourse = async (c) => {
+    if (!window.confirm(t.cbDeleteConfirm)) return;
+    await api.deleteCourse(c.id);
+    showToast(t.cbCourseDeleted);
+  };
+  const saveModuleName = async (courseId) => {
+    const { id, title } = editModule;
+    setEditModule(null);
+    if (title.trim()) { await api.renameModule(courseId, id, title.trim()); showToast(bn ? 'মডিউল আপডেট হয়েছে' : 'Module updated'); }
+  };
+  const saveLessonName = async (courseId, moduleId) => {
+    const { id, title } = editLesson;
+    setEditLesson(null);
+    if (title.trim()) { await api.renameLesson(courseId, moduleId, id, title.trim()); showToast(bn ? 'লেসন আপডেট হয়েছে' : 'Lesson updated'); }
+  };
 
   const lessonMeta = (type) => LESSON_TYPES.find((x) => x.key === type) || LESSON_TYPES[0];
   const typeLabel = (type) =>
@@ -113,15 +159,72 @@ export default function CoursesTab() {
                     <span className={`chip ${c.published ? 'chip-green' : 'chip-stone'}`}>
                       {c.published ? t.cbPublished : t.cbDraft}
                     </span>
+                    {c.featured && <span className="chip chip-orange" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="star" size={12} /> {t.courseFeatured}</span>}
+                    {c.price > 0 && <span className="chip chip-orange">৳{c.price}</span>}
                   </div>
                   <div className="mono" style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 3 }}>
                     {c.slug} · {c.modules.length} {t.cbModules} · {lessonCount} {t.cbLessons}
                   </div>
                 </div>
+                <button className="btn-ghost-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => startEdit(c)}><Icon name="edit" size={13} /> {t.cbEdit}</button>
+                <button className="btn-ghost-sm" style={{ color: c.featured ? 'var(--brand)' : 'var(--muted)' }} onClick={() => api.toggleCourseFeatured(c.id).then(() => showToast(c.featured ? t.courseUnfeatured || 'Unfeatured' : t.courseFeatured, 'info'))} title={t.courseFeatured}>
+                  <Icon name="star" size={15} />
+                </button>
                 <button className="btn-ghost-sm" onClick={() => togglePublish(c)}>
                   {c.published ? t.cbUnpublish : t.cbPublish}
                 </button>
+                <button className="btn-ghost-sm" style={{ color: '#B91C1C', display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => removeCourse(c)}><Icon name="trash" size={13} /> {t.cbDelete}</button>
               </div>
+
+              {/* inline course edit form */}
+              {editCourse?.id === c.id && (
+                <div className="panel" style={{ padding: 14, marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(150px,100%),1fr))', gap: 10, alignItems: 'end' }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t.cbTitleLabel}
+                    <input value={editCourse.title} onChange={(e) => setEditCourse((s) => ({ ...s, title: e.target.value }))} style={{ ...inputStyle, width: '100%', marginTop: 4 }} />
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t.cbPrice}
+                    <input type="number" value={editCourse.price} onChange={(e) => setEditCourse((s) => ({ ...s, price: e.target.value }))} style={{ ...inputStyle, width: '100%', marginTop: 4 }} />
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t.cbOldPrice}
+                    <input type="number" value={editCourse.oldPrice} onChange={(e) => setEditCourse((s) => ({ ...s, oldPrice: e.target.value }))} style={{ ...inputStyle, width: '100%', marginTop: 4 }} />
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t.cbCategory}
+                    <select value={editCourse.category} onChange={(e) => setEditCourse((s) => ({ ...s, category: e.target.value }))} style={{ ...inputStyle, width: '100%', marginTop: 4 }}>
+                      <option value="">—</option>
+                      {cats.map((c) => <option key={c.id} value={c.slug}>{c.icon} {c.name}</option>)}
+                      {/* keep the current value selectable even if it predates the managed list */}
+                      {editCourse.category && !cats.some((c) => c.slug === editCourse.category) && (
+                        <option value={editCourse.category}>{editCourse.category}</option>
+                      )}
+                    </select>
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t.cdInstructor}
+                    <input value={editCourse.instructor} onChange={(e) => setEditCourse((s) => ({ ...s, instructor: e.target.value }))} style={{ ...inputStyle, width: '100%', marginTop: 4 }} />
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t.cdLevel}
+                    <input value={editCourse.level} onChange={(e) => setEditCourse((s) => ({ ...s, level: e.target.value }))} style={{ ...inputStyle, width: '100%', marginTop: 4 }} />
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t.cdLanguage}
+                    <input value={editCourse.language} onChange={(e) => setEditCourse((s) => ({ ...s, language: e.target.value }))} style={{ ...inputStyle, width: '100%', marginTop: 4 }} />
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t.cdDuration}
+                    <input value={editCourse.duration} onChange={(e) => setEditCourse((s) => ({ ...s, duration: e.target.value }))} style={{ ...inputStyle, width: '100%', marginTop: 4 }} />
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t.cbCompletionReq}
+                    <input type="number" min="1" max="100" value={editCourse.completionThreshold} onChange={(e) => setEditCourse((s) => ({ ...s, completionThreshold: e.target.value }))} style={{ ...inputStyle, width: '100%', marginTop: 4 }} />
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{t.cbTaglineLabel || 'Tagline'}
+                    <input value={editCourse.tagline} onChange={(e) => setEditCourse((s) => ({ ...s, tagline: e.target.value }))} style={{ ...inputStyle, width: '100%', marginTop: 4 }} />
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', gridColumn: '1 / -1' }}>{t.cdDescription}
+                    <textarea value={editCourse.description} onChange={(e) => setEditCourse((s) => ({ ...s, description: e.target.value }))} rows={3} style={{ ...inputStyle, width: '100%', marginTop: 4, resize: 'vertical' }} />
+                  </label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn-primary" onClick={saveEdit}>{t.cbSave}</button>
+                    <button className="btn-ghost-sm" onClick={() => setEditCourse(null)}>{t.cbCancel}</button>
+                  </div>
+                </div>
+              )}
 
               {!isCollapsed && (
                 <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -134,13 +237,31 @@ export default function CoursesTab() {
                     return (
                       <div key={m.id} className="panel" style={{ padding: 14 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                          <span style={{ fontWeight: 700, fontSize: 14.5, flex: 1 }}>{m.title}</span>
-                          <button
-                            className="btn-ghost-sm"
-                            onClick={() => api.deleteModule(c.id, m.id).then(() => showToast(bn ? 'মডিউল মুছে ফেলা হয়েছে' : 'Module deleted'))}
-                          >
-                            ✕
-                          </button>
+                          {editModule?.id === m.id ? (
+                            <>
+                              <input
+                                value={editModule.title}
+                                autoFocus
+                                onChange={(e) => setEditModule((s) => ({ ...s, title: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') saveModuleName(c.id); if (e.key === 'Escape') setEditModule(null); }}
+                                style={{ ...inputStyle, flex: 1 }}
+                              />
+                              <button className="btn-ghost-sm" onClick={() => saveModuleName(c.id)}>{t.cbSave}</button>
+                              <button className="btn-ghost-sm" onClick={() => setEditModule(null)}>{t.cbCancel}</button>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ fontWeight: 700, fontSize: 14.5, flex: 1, minWidth: 0 }}>{m.title}</span>
+                              <button className="btn-ghost-sm" onClick={() => setEditModule({ id: m.id, title: m.title })} aria-label="rename module"><Icon name="edit" size={14} /></button>
+                              <button
+                                className="btn-ghost-sm"
+                                onClick={() => api.deleteModule(c.id, m.id).then(() => showToast(bn ? 'মডিউল মুছে ফেলা হয়েছে' : 'Module deleted'))}
+                                aria-label="delete module"
+                              >
+                                <Icon name="trash" size={14} />
+                              </button>
+                            </>
+                          )}
                         </div>
 
                         {/* lessons */}
@@ -150,19 +271,59 @@ export default function CoursesTab() {
                           )}
                           {m.lessons.map((l) => {
                             const meta = lessonMeta(l.type);
+                            const dragging = drag?.lessonId === l.id;
                             return (
-                              <div key={l.id} className="row-line" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 4px' }}>
-                                <span style={{ width: 20, textAlign: 'center', fontSize: 13 }}>{meta.icon}</span>
-                                <span style={{ flex: 1, fontSize: 13.5, minWidth: 0 }}>{l.title}</span>
-                                {l.duration && <span style={{ fontSize: 12, color: 'var(--faint)' }}>{l.duration}</span>}
-                                <span className={`chip ${meta.chip}`} style={{ flex: 'none' }}>{typeLabel(l.type)}</span>
-                                <button
-                                  className="btn-ghost-sm"
-                                  onClick={() => api.deleteLesson(c.id, m.id, l.id)}
-                                  aria-label="delete lesson"
-                                >
-                                  ✕
-                                </button>
+                              <div
+                                key={l.id}
+                                className="row-line"
+                                draggable
+                                onDragStart={() => setDrag({ moduleId: m.id, lessonId: l.id })}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={() => onLessonDrop(c.id, m, l.id)}
+                                onDragEnd={() => setDrag(null)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 4px', opacity: dragging ? 0.4 : 1, cursor: 'grab', flexWrap: 'wrap' }}
+                              >
+                                <span title="drag to reorder" style={{ color: 'var(--faint)', cursor: 'grab', display: 'inline-flex' }}><Icon name="drag" size={15} /></span>
+                                <span style={{ color: 'var(--muted)', display: 'inline-flex' }}><Icon name={meta.icon} size={15} /></span>
+                                {editLesson?.id === l.id ? (
+                                  <>
+                                    <input
+                                      value={editLesson.title}
+                                      autoFocus
+                                      onChange={(e) => setEditLesson((s) => ({ ...s, title: e.target.value }))}
+                                      onKeyDown={(e) => { if (e.key === 'Enter') saveLessonName(c.id, m.id); if (e.key === 'Escape') setEditLesson(null); }}
+                                      style={{ ...inputStyle, flex: 1 }}
+                                    />
+                                    <button className="btn-ghost-sm" onClick={() => saveLessonName(c.id, m.id)}>{t.cbSave}</button>
+                                    <button className="btn-ghost-sm" onClick={() => setEditLesson(null)}>{t.cbCancel}</button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span style={{ flex: 1, fontSize: 13.5, minWidth: 0 }}>{l.title}</span>
+                                    {l.duration && <span style={{ fontSize: 12, color: 'var(--faint)' }}>{l.duration}</span>}
+                                    <span className={`chip ${meta.chip}`} style={{ flex: 'none' }}>{typeLabel(l.type)}</span>
+                                    {/* demo (free preview) vs locked */}
+                                    <button
+                                      className={`chip ${l.free ? 'chip-green' : ''}`}
+                                      style={{ flex: 'none', cursor: 'pointer', border: l.free ? 'none' : '1.5px solid var(--line)', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                                      onClick={() => api.toggleLessonFree(c.id, m.id, l.id)}
+                                      title={l.free ? t.cbDemo : t.cbLocked}
+                                    >
+                                      <Icon name={l.free ? 'eye' : 'lock'} size={12} /> {l.free ? t.cbDemo : t.cbLocked}
+                                    </button>
+                                    {/* reorder */}
+                                    <button className="btn-ghost-sm" onClick={() => api.moveLesson(c.id, m.id, l.id, 'up')} aria-label="move up"><Icon name="arrowUp" size={14} /></button>
+                                    <button className="btn-ghost-sm" onClick={() => api.moveLesson(c.id, m.id, l.id, 'down')} aria-label="move down"><Icon name="arrowDown" size={14} /></button>
+                                    <button className="btn-ghost-sm" onClick={() => setEditLesson({ id: l.id, title: l.title })} aria-label="rename lesson"><Icon name="edit" size={14} /></button>
+                                    <button
+                                      className="btn-ghost-sm"
+                                      onClick={() => api.deleteLesson(c.id, m.id, l.id)}
+                                      aria-label="delete lesson"
+                                    >
+                                      <Icon name="trash" size={14} />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             );
                           })}

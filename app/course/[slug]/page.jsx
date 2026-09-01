@@ -5,9 +5,10 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import SiteNav from '@/components/SiteNav';
 import CheckoutModal from '@/components/CheckoutModal';
+import ReviewForm from '@/components/ReviewForm';
+import LessonQAModal from '@/components/LessonQAModal';
 import { modeLabel, modeChip } from '@/lib/catalog';
 
-const STUDENT_ID = 1;
 const LESSON_ICON = { video: '▶', pdf: '📄', quiz: '❓', assignment: '✍' };
 
 function Stars({ rating }) {
@@ -19,9 +20,12 @@ function CourseDetails() {
   const { slug } = useParams();
   const router = useRouter();
   const search = useSearchParams();
-  const { t, lang, loaded, auth, courses, batches, enrollments, showToast, api } = useApp();
+  const { t, lang, loaded, auth, courses, batches, enrollments, showToast, api, wishlist, toggleWishlist } = useApp();
+  const STUDENT_ID = auth?.studentId;
+  const STUDENT_NAME = auth?.name;
   const [openFaq, setOpenFaq] = useState(null);
   const [checkout, setCheckout] = useState(false);
+  const [qaLesson, setQaLesson] = useState(null);
   const enrollTriedRef = useRef(false);
 
   const course = loaded ? courses.find((c) => c.slug === slug) : null;
@@ -74,14 +78,17 @@ function CourseDetails() {
   };
 
   // called by CheckoutModal after free-confirm or successful payment
-  const confirmEnroll = async () => {
+  const confirmEnroll = async (couponCode) => {
     const batch = courseBatches[0];
-    // Payment Service: record a transaction only for paid courses
+    // Payment Service: record a transaction only for paid courses.
+    // The coupon (if any) is applied + redeemed server-side; amount here is the pre-discount price.
     if (course.price > 0) {
       try {
         await api.recordPayment({
-          studentId: STUDENT_ID, studentName: 'তানভীর আহমেদ',
-          courseId: course.id, batchId: batch.id, amount: course.price, method: 'bkash', type: 'enrollment'
+          studentId: STUDENT_ID, studentName: STUDENT_NAME,
+          courseId: course.id, batchId: batch.id, amount: course.price, method: 'bkash', type: 'enrollment',
+          ...(couponCode ? { couponCode } : {}),
+          ...(search.get('aff') ? { affiliateCode: search.get('aff') } : {})
         });
       } catch { /* ignore */ }
     }
@@ -125,7 +132,7 @@ function CourseDetails() {
             {course.whatYouLearn?.length > 0 && (
               <div className="panel" style={{ padding: 20, marginTop: 22 }}>
                 <h2 style={section}>{t.cdWhatLearn}</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(240px,100%),1fr))', gap: 10 }}>
                   {course.whatYouLearn.map((w, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13.5, lineHeight: 1.5 }}>
                       <span style={{ color: 'var(--green)' }}>✓</span> {w}
@@ -159,17 +166,19 @@ function CourseDetails() {
                   <div key={m.id} className="card" style={{ overflow: 'hidden' }}>
                     <div style={{ padding: '12px 16px', fontWeight: 700, fontSize: 14, background: 'var(--paper)', borderBottom: '1px solid var(--line-soft)' }}>{m.title}</div>
                     {m.lessons.map((l) => (
-                      <button
-                        key={l.id}
-                        onClick={() => lessonClick(l)}
-                        className="row-line"
-                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer' }}
-                      >
-                        <span style={{ width: 18, textAlign: 'center', fontSize: 12, color: l.free ? 'var(--brand)' : 'var(--faint)' }}>{l.free ? LESSON_ICON[l.type] || '▶' : '🔒'}</span>
-                        <span style={{ flex: 1, fontSize: 13.5, minWidth: 0, color: l.free ? 'var(--coal)' : 'var(--muted)' }}>{l.title}</span>
-                        {l.duration && <span style={{ fontSize: 12, color: 'var(--faint)' }}>{l.duration}</span>}
-                        {l.free && <span className="tag chip-green" style={{ flex: 'none' }}>{t.cdPreviewTag}</span>}
-                      </button>
+                      <div key={l.id} className="row-line" style={{ display: 'flex', alignItems: 'center' }}>
+                        <button
+                          onClick={() => lessonClick(l)}
+                          style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+                        >
+                          <span style={{ width: 18, textAlign: 'center', fontSize: 12, color: l.free ? 'var(--brand)' : 'var(--faint)' }}>{l.free ? LESSON_ICON[l.type] || '▶' : '🔒'}</span>
+                          <span style={{ flex: 1, fontSize: 13.5, minWidth: 0, color: l.free ? 'var(--coal)' : 'var(--muted)' }}>{l.title}</span>
+                          {l.duration && <span style={{ fontSize: 12, color: 'var(--faint)' }}>{l.duration}</span>}
+                          {l.free && <span className="tag chip-green" style={{ flex: 'none' }}>{t.cdPreviewTag}</span>}
+                        </button>
+                        <button onClick={() => setQaLesson(l)} title={t.qa} aria-label="Q&A"
+                          style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 14px', fontSize: 15, color: 'var(--muted)' }}>💬</button>
+                      </div>
                     ))}
                   </div>
                 ))}
@@ -194,18 +203,25 @@ function CourseDetails() {
             )}
 
             {/* reviews */}
-            {course.reviews?.length > 0 && (
+            {(course.reviews?.length > 0 || isEnrolled) && (
               <div style={{ marginTop: 26 }}>
                 <h2 style={section}>{t.cdReviews}</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 12 }}>
-                  {course.reviews.map((r, i) => (
-                    <div key={i} className="card" style={{ padding: '16px 18px' }}>
-                      <Stars rating={r.rating} />
-                      <div style={{ fontSize: 13.5, lineHeight: 1.65, color: '#44403c', margin: '8px 0 10px' }}>&ldquo;{r.text}&rdquo;</div>
-                      <div style={{ fontSize: 12.5, fontWeight: 700 }}>{r.name}</div>
-                    </div>
-                  ))}
-                </div>
+                {course.reviews?.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(260px,100%),1fr))', gap: 12 }}>
+                    {course.reviews.map((r, i) => (
+                      <div key={i} className="card" style={{ padding: '16px 18px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Stars rating={r.rating} />
+                          {r.featured && <span className="tag chip-orange" style={{ fontSize: 10.5 }}>★ {t.reviewFeatured}</span>}
+                        </div>
+                        <div style={{ fontSize: 13.5, lineHeight: 1.65, color: '#44403c', margin: '8px 0 10px' }}>&ldquo;{r.text}&rdquo;</div>
+                        <div style={{ fontSize: 12.5, fontWeight: 700 }}>{r.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* enrolled students can leave a review */}
+                {isEnrolled && <ReviewForm courseId={course.id} />}
               </div>
             )}
           </div>
@@ -233,6 +249,21 @@ function CourseDetails() {
                   </button>
                 )}
 
+                {/* wishlist (logged-in students, not yet enrolled) */}
+                {auth?.role === 'student' && !isEnrolled && (
+                  <button
+                    onClick={() => toggleWishlist(course.id)}
+                    style={{
+                      width: '100%', marginTop: 10, padding: 11, borderRadius: 11, cursor: 'pointer', fontFamily: 'inherit',
+                      fontSize: 13.5, fontWeight: 700, background: 'var(--paper)',
+                      border: wishlist.includes(course.id) ? '1.5px solid var(--brand)' : '1.5px solid var(--line)',
+                      color: wishlist.includes(course.id) ? 'var(--brand-deep)' : 'var(--ink-soft)'
+                    }}
+                  >
+                    {wishlist.includes(course.id) ? `${t.wishlistSaved}` : `♡ ${t.wishlistSave}`}
+                  </button>
+                )}
+
                 <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 9, fontSize: 13, color: 'var(--ink-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{t.cdLevel}</span><b>{course.level}</b></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{t.cdDuration}</span><b>{course.duration}</b></div>
@@ -248,7 +279,7 @@ function CourseDetails() {
         {related.length > 0 && (
           <div style={{ marginTop: 40 }}>
             <h2 style={section}>{t.cdRelated}</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(240px,100%),1fr))', gap: 14 }}>
               {related.map((rc) => (
                 <button key={rc.id} className="card" onClick={() => router.push(`/course/${rc.slug}`)} style={{ overflow: 'hidden', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
                   <div className="placeholder-art" style={{ height: 100, fontSize: 11 }}>{rc.thumb}</div>
@@ -266,6 +297,8 @@ function CourseDetails() {
       {checkout && (
         <CheckoutModal course={course} batch={courseBatches[0]} t={t} onClose={() => setCheckout(false)} onConfirm={confirmEnroll} />
       )}
+
+      {qaLesson && <LessonQAModal lesson={qaLesson} onClose={() => setQaLesson(null)} />}
     </>
   );
 }

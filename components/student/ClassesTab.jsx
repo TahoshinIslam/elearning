@@ -2,10 +2,9 @@
 
 import { useApp } from '@/context/AppContext';
 
-const STUDENT_ID = 1;
-
 export default function ClassesTab({ onOpenPay }) {
-  const { t, lang, centerDisplay, studentPaid, showToast, enrollments, liveClasses, api } = useApp();
+  const { t, lang, centerDisplay, studentPaid, showToast, enrollments, liveClasses, api, auth } = useApp();
+  const STUDENT_ID = auth?.studentId;
 
   // classes for the batches this student is enrolled in
   const myBatchIds = new Set(enrollments.filter((e) => e.studentId === STUDENT_ID).map((e) => e.batchId));
@@ -63,14 +62,13 @@ export default function ClassesTab({ onOpenPay }) {
         <div style={{ fontSize: 15, color: 'var(--muted)', marginTop: 6 }}>{centerDisplay} · {t.sModuleNow}</div>
       </div>
 
-      {/* fee due banner / paid confirmation */}
+      {/* one-time purchase banner / lifetime-access confirmation */}
       {!studentPaid ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--coal)', color: '#fff', borderRadius: 16, padding: '18px 20px', marginBottom: 20, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 700, fontSize: 15.5 }}>{t.dueNotice}</div>
-            <div style={{ fontSize: 13, color: 'rgba(255,255,255,.65)' }}>জুলাই {new Date().getFullYear()} · HSC ফিজিক্স — ব্যাচ ৩</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,.65)' }}>{t.oneTimeNote}</div>
           </div>
-          <div className="display" style={{ fontSize: 26 }}>৳1,500</div>
           <button
             onClick={onOpenPay}
             style={{ border: 'none', background: 'var(--bkash)', color: '#fff', borderRadius: 11, padding: '12px 22px', fontSize: 14.5, fontWeight: 700 }}
@@ -80,7 +78,7 @@ export default function ClassesTab({ onOpenPay }) {
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--green-chip-bg)', color: 'var(--green-chip-fg)', borderRadius: 14, padding: '14px 18px', marginBottom: 20, fontWeight: 700, fontSize: 14.5 }}>
-          ✓ {t.paySuccess}
+          ✓ {t.purchasedNote}
         </div>
       )}
 

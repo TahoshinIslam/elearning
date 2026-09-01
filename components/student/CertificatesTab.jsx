@@ -4,11 +4,10 @@ import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { courseCompletion, CERT_THRESHOLD } from '@/lib/progress';
 
-const STUDENT_ID = 1;
-const STUDENT_NAME = 'তানভীর আহমেদ';
-
 export default function CertificatesTab() {
-  const { t, showToast, centerDisplay, courses: allCourses, enrollments, submissions, attendance, certificates, api } = useApp();
+  const { t, showToast, centerDisplay, courses: allCourses, enrollments, submissions, attendance, certificates, api, auth } = useApp();
+  const STUDENT_ID = auth?.studentId;
+  const STUDENT_NAME = auth?.name;
   const [viewing, setViewing] = useState(null); // certificate object
 
   const rows = enrollments
@@ -16,8 +15,9 @@ export default function CertificatesTab() {
     .map((e) => {
       const course = allCourses.find((c) => c.id === (e.courseId ?? null));
       const { completion } = courseCompletion(STUDENT_ID, course, { enrollments, submissions, attendance });
+      const threshold = course?.completionThreshold ?? CERT_THRESHOLD;
       const cert = certificates.find((c) => c.studentId === STUDENT_ID && c.courseId === course?.id);
-      return { course, completion, eligible: completion >= CERT_THRESHOLD, cert };
+      return { course, completion, threshold, eligible: completion >= threshold, cert };
     })
     .filter((r) => r.course);
 
@@ -37,8 +37,8 @@ export default function CertificatesTab() {
       {rows.length === 0 ? (
         <div className="card" style={{ padding: 28, textAlign: 'center', color: 'var(--faint)' }}>{t.certNoneEnrolled}</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 16 }}>
-          {rows.map(({ course, completion, eligible, cert }) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(280px,100%),1fr))', gap: 16 }}>
+          {rows.map(({ course, completion, threshold, eligible, cert }) => (
             <div key={course.id} className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
                 <div style={{ fontWeight: 700, fontSize: 15.5, lineHeight: 1.4 }}>{course.title}</div>
@@ -53,7 +53,7 @@ export default function CertificatesTab() {
                   <div className="progress-fill" style={{ width: `${completion}%`, background: eligible ? 'var(--green)' : 'var(--brand)' }} />
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 5, fontWeight: 600 }}>
-                  {completion}% / {CERT_THRESHOLD}% · {t.completion}
+                  {completion}% / {threshold}% · {t.completion}
                 </div>
               </div>
 
@@ -73,13 +73,24 @@ export default function CertificatesTab() {
       )}
 
       {viewing && (
-        <CertificateModal cert={viewing} center={centerDisplay} t={t} onClose={() => setViewing(null)} onDownload={() => showToast(t.certDownloaded)} />
+        <CertificateModal
+          cert={viewing}
+          center={centerDisplay}
+          t={t}
+          onClose={() => setViewing(null)}
+          onDownload={() => { if (typeof window !== 'undefined') window.print(); }}
+          onShare={async () => {
+            const url = `${window.location.origin}/verify/${viewing.certNo}`;
+            try { await navigator.clipboard.writeText(url); } catch { /* ignore */ }
+            showToast(t.certLinkCopied);
+          }}
+        />
       )}
     </div>
   );
 }
 
-function CertificateModal({ cert, center, t, onClose, onDownload }) {
+function CertificateModal({ cert, center, t, onClose, onDownload, onShare }) {
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(22,19,15,.6)', zIndex: 90, display: 'grid', placeItems: 'center', padding: 20 }}
@@ -114,9 +125,10 @@ function CertificateModal({ cert, center, t, onClose, onDownload }) {
           </div>
         </div>
         {/* actions */}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16 }}>
-          <button className="btn-dark" onClick={onDownload} style={{ borderRadius: 10, padding: '11px 24px' }}>⬇ {t.certDownload}</button>
-          <button className="btn-ghost-sm" onClick={onClose} style={{ padding: '11px 20px' }}>{t.done}</button>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+          <button className="btn-dark" onClick={onDownload} style={{ borderRadius: 10, padding: '11px 22px' }}>⬇ {t.certDownload}</button>
+          <button className="btn-primary" onClick={onShare} style={{ borderRadius: 10, padding: '11px 22px' }}>🔗 {t.certShare}</button>
+          <button className="btn-ghost-sm" onClick={onClose} style={{ padding: '11px 18px' }}>{t.done}</button>
         </div>
       </div>
     </div>

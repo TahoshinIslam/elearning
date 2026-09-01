@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 
 const TODAY = '2026-07-06';
-const INSTRUCTOR_ID = 1; // logged-in teacher (আবরার হায়দার)
 
 const fieldStyle = {
   border: '1px solid var(--field-line)', background: '#fff', borderRadius: 8,
@@ -12,7 +11,8 @@ const fieldStyle = {
 };
 
 export default function TeacherClasses() {
-  const { t, batches, liveClasses, api, showToast } = useApp();
+  const { t, batches, liveClasses, api, showToast, auth } = useApp();
+  const INSTRUCTOR_ID = auth?.teacherId;
   const [showForm, setShowForm] = useState(false);
   const [f, setF] = useState({ title: '', batchId: batches[0]?.id ?? '', classDate: TODAY, startTime: '', endTime: '', zoomUrl: '' });
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
@@ -28,7 +28,12 @@ export default function TeacherClasses() {
     if (c.zoomUrl) window.open(c.zoomUrl, '_blank', 'noopener');
   };
   const end = async (c) => { await api.endClass(c.id); showToast(t.lcEndedToast); };
-  const upload = async (c) => { await api.setRecording(c.id, `https://recordings.leolearning.app/${c.id}`); showToast(t.lcRecUploaded); };
+  const upload = async (c, url) => {
+    const link = (url || '').trim();
+    if (!/^https?:\/\/.+/i.test(link)) { showToast(t.lcRecUrlInvalid); return; }
+    await api.setRecording(c.id, link);
+    showToast(t.lcRecUploaded);
+  };
 
   const schedule = async () => {
     if (!f.title.trim()) { showToast(t.lcTitle); return; }
@@ -40,6 +45,25 @@ export default function TeacherClasses() {
     setF({ title: '', batchId: batches[0]?.id ?? '', classDate: TODAY, startTime: '', endTime: '', zoomUrl: '' });
     setShowForm(false);
     showToast(t.lcScheduledToast);
+  };
+
+  // paste a recording link for an ended class (teacher/admin uploads to storage, then pastes the URL)
+  const RecUpload = ({ c }) => {
+    const [open, setOpen] = useState(false);
+    const [url, setUrl] = useState('');
+    if (!open) return <button className="btn-ghost-sm" onClick={() => setOpen(true)}>⬆ {t.lcUploadRec}</button>;
+    return (
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          autoFocus
+          style={{ ...fieldStyle, width: 240 }}
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder={t.lcRecUrlPh}
+        />
+        <button className="btn-dark" style={{ borderRadius: 8, padding: '9px 14px' }} onClick={() => upload(c, url)}>{t.lcRecUrlSave}</button>
+      </div>
+    );
   };
 
   const Card = ({ c }) => {
@@ -65,8 +89,8 @@ export default function TeacherClasses() {
         )}
         {c.status === 'ended' && (
           c.recordingUrl
-            ? <span className="chip chip-green">✓ {t.lcWatchRec}</span>
-            : <button className="btn-ghost-sm" onClick={() => upload(c)}>⬆ {t.lcUploadRec}</button>
+            ? <a className="chip chip-green" href={c.recordingUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>✓ {t.lcWatchRec}</a>
+            : <RecUpload c={c} />
         )}
       </div>
     );
@@ -90,7 +114,7 @@ export default function TeacherClasses() {
 
       {showForm && (
         <div style={{ background: '#fff9f3', border: '1.5px solid #f2b28a', borderRadius: 14, padding: '18px 20px', marginBottom: 20 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(150px,100%),1fr))', gap: 12 }}>
             <div style={{ gridColumn: '1 / -1' }}>
               <label className="label" style={{ fontSize: 12.5, marginBottom: 5 }}>{t.lcTitle}</label>
               <input style={fieldStyle} value={f.title} onChange={(e) => set('title', e.target.value)} />

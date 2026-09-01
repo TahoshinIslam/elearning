@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { courseCompletion } from '@/lib/progress';
 
-// the student portal represents student id 1 (তানভীর আহমেদ)
-const STUDENT_ID = 1;
 const PALETTE = ['#E8590C', '#1D4ED8', '#0E9F6E', '#7C3AED'];
 
 export default function CoursesTab() {
-  const { t, lang, showToast, courses: allCourses, batches, enrollments, submissions, attendance, api } = useApp();
+  const { t, lang, showToast, courses: allCourses, batches, enrollments, submissions, attendance, api, auth } = useApp();
+  const STUDENT_ID = auth?.studentId;
+  const STUDENT_NAME = auth?.name;
   const bn = lang === 'bn';
   const [openCourse, setOpenCourse] = useState(null);
   const [courseTab, setCourseTab] = useState('modules');
@@ -58,7 +58,7 @@ export default function CoursesTab() {
   const handleSubmit = async (lessonId, courseId) => {
     await api.submitAssignment({
       lessonId, courseId, studentId: STUDENT_ID,
-      studentName: 'তানভীর আহমেদ',
+      studentName: STUDENT_NAME,
       content: bn ? 'জমা দেওয়া হয়েছে (ডেমো)' : 'Submitted (demo)'
     });
     showToast(t.asgSubmitted);
@@ -87,7 +87,7 @@ export default function CoursesTab() {
         {courses.length === 0 ? (
           <div className="card" style={{ padding: 28, textAlign: 'center', color: 'var(--faint)' }}>{t.noEnrollments}</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(250px,1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(250px,100%),1fr))', gap: 14 }}>
             {courses.map((co, i) => (
               <div key={co.enrollmentId} className="card" style={{ overflow: 'hidden' }}>
                 <div style={{ height: 92, background: co.c, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 700, fontSize: 19, letterSpacing: '.02em' }}>
@@ -119,7 +119,7 @@ export default function CoursesTab() {
         {available.length === 0 ? (
           <div className="card" style={{ padding: 20, textAlign: 'center', color: 'var(--faint)', fontSize: 13.5 }}>{t.allEnrolled}</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(260px,100%),1fr))', gap: 14 }}>
             {available.map((b) => (
               <div key={b.id} className="card" style={{ padding: 18 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.4 }}>{b.courseTitle}</div>

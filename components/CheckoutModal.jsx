@@ -1,18 +1,44 @@
 'use client';
 
 import { useState } from 'react';
+import { useApp } from '@/context/AppContext';
+
+const COUPON_ERR = {
+  coupon_invalid: 'couponInvalid', coupon_expired: 'couponExpired',
+  coupon_exhausted: 'couponExhausted', coupon_wrong_center: 'couponInvalid'
+};
 
 // Free courses skip payment (single confirm). Paid courses go pay → pin → success → complete.
-// onConfirm() actually creates the enrollment (passed by the course page).
+// onConfirm(couponCode) actually creates the enrollment (passed by the course page).
 export default function CheckoutModal({ course, batch, t, onClose, onConfirm }) {
+  const { api } = useApp();
   const free = course.price === 0;
   const [step, setStep] = useState(free ? 'confirm' : 'pay');
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // coupon state
+  const [code, setCode] = useState('');
+  const [applied, setApplied] = useState(null); // { code, discount, finalAmount }
+  const [couponErr, setCouponErr] = useState('');
+  const price = applied ? applied.finalAmount : course.price;
+
+  const applyCoupon = async () => {
+    if (!code.trim()) return;
+    setCouponErr('');
+    try {
+      const r = await api.validateCoupon(code.trim(), course.price);
+      setApplied({ code: code.trim().toUpperCase(), discount: r.discount, finalAmount: r.finalAmount });
+    } catch (e) {
+      setApplied(null);
+      setCouponErr(t[COUPON_ERR[e?.data?.error]] || t.couponInvalid);
+    }
+  };
+  const removeCoupon = () => { setApplied(null); setCode(''); setCouponErr(''); };
+
   const finish = async () => {
     setBusy(true);
-    try { await onConfirm(); } finally { setBusy(false); }
+    try { await onConfirm(applied?.code); } finally { setBusy(false); }
   };
 
   const Row = ({ label, value, strong }) => (
@@ -38,8 +64,40 @@ export default function CheckoutModal({ course, batch, t, onClose, onConfirm }) 
           <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--faint)', letterSpacing: '.04em' }}>{t.orderSummary}</div>
           <Row label={course.title} value={batch.name} />
           <div style={{ borderTop: '1px dashed var(--line)', margin: '4px 0' }} />
-          <Row label={t.coursePrice} value={free ? t.cdFree : `৳${course.price}`} strong />
+          {applied ? (
+            <>
+              <Row label={t.coursePrice} value={`৳${course.price}`} />
+              <Row label={`${t.couponDiscount} · ${applied.code}`} value={`− ৳${applied.discount}`} />
+              <div style={{ borderTop: '1px dashed var(--line)', margin: '4px 0' }} />
+              <Row label={t.coursePrice} value={`৳${price}`} strong />
+            </>
+          ) : (
+            <Row label={t.coursePrice} value={free ? t.cdFree : `৳${course.price}`} strong />
+          )}
         </div>
+
+        {/* coupon (paid courses only) */}
+        {!free && step !== 'success' && (
+          <div style={{ marginBottom: 18 }}>
+            {applied ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--green-chip-bg)', color: 'var(--green-chip-fg)', borderRadius: 10, padding: '9px 12px', fontSize: 13 }}>
+                <span>🎟 {t.couponApplied}: <b>{applied.code}</b></span>
+                <button onClick={removeCoupon} style={{ border: 'none', background: 'none', color: 'inherit', fontWeight: 700, cursor: 'pointer', fontSize: 12.5 }}>{t.couponRemove}</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={t.couponCode}
+                    style={{ flex: 1, padding: '10px 12px', border: '1.5px solid var(--line)', borderRadius: 10, fontSize: 13.5, fontFamily: 'inherit', textTransform: 'uppercase' }} />
+                  <button onClick={applyCoupon} style={{ border: '1.5px solid var(--brand)', background: 'var(--brand-wash)', color: 'var(--brand-deep)', borderRadius: 10, padding: '0 16px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5 }}>
+                    {t.couponApply}
+                  </button>
+                </div>
+                {couponErr && <div style={{ color: '#c92a2a', fontSize: 12.5, marginTop: 6 }}>{couponErr}</div>}
+              </>
+            )}
+          </div>
+        )}
 
         {/* FREE flow */}
         {free && (
@@ -59,7 +117,7 @@ export default function CheckoutModal({ course, batch, t, onClose, onConfirm }) 
             onClick={() => setStep('pin')}
             style={{ width: '100%', border: 'none', background: 'var(--bkash)', color: '#fff', borderRadius: 12, padding: 14, fontSize: 15.5, fontWeight: 700, fontFamily: 'inherit' }}
           >
-            {t.payWithBkash} · ৳{course.price}
+            {t.payWithBkash} · ৳{price}
           </button>
         )}
 

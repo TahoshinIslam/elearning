@@ -5,8 +5,14 @@ import { useApp } from '@/context/AppContext';
 const COLORS = ['#E8590C', '#1D4ED8', '#0E9F6E', '#7C3AED'];
 
 export default function TeachersTab() {
-  const { t, lang, teachers, batches, addTeacher, assignTeacher, removeTeacherBatch, showToast } = useApp();
+  const { t, lang, teachers, batches, courses, payments, addTeacher, assignTeacher, removeTeacherBatch, showToast } = useApp();
   const batchNames = batches.map((b) => b.name);
+
+  // earnings = successful payments for courses this instructor teaches (by id or name)
+  const earningsFor = (tc) => {
+    const courseIds = new Set(courses.filter((c) => c.instructorId === tc.id || c.instructor === tc.name).map((c) => c.id));
+    return payments.filter((p) => p.status === 'success' && courseIds.has(p.courseId)).reduce((a, p) => a + Number(p.amount), 0);
+  };
 
   const handleAdd = async () => {
     await addTeacher();
@@ -35,7 +41,7 @@ export default function TeachersTab() {
         <button className="btn-primary" onClick={handleAdd}>+ {t.addTeacher}</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(300px,100%),1fr))', gap: 16 }}>
         {teachers.map((tc, i) => {
           const c = COLORS[i % COLORS.length];
           const assignable = batchNames.filter((bn) => !tc.batches.includes(bn));
@@ -50,6 +56,10 @@ export default function TeachersTab() {
                   <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>
                     {tc.subject} · <span className="mono" style={{ fontSize: 11.5 }}>{tc.phone}</span>
                   </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 10.5, color: 'var(--faint)', fontWeight: 700 }}>{t.instrEarnings}</div>
+                  <div className="display" style={{ fontSize: 16, color: 'var(--green)' }}>৳{earningsFor(tc).toLocaleString('en-IN')}</div>
                 </div>
               </div>
 

@@ -3,42 +3,50 @@
 import { useApp } from '@/context/AppContext';
 
 export default function RecordingsTab() {
-  const { t, lang, showToast } = useApp();
+  const { t, showToast, enrollments, liveClasses, batches, auth } = useApp();
+  const STUDENT_ID = auth?.studentId;
 
-  const modules = [
-    {
-      name: lang === 'bn' ? 'মডিউল ৮' : 'Module 8',
-      rows: [
-        { title: 'নিউটনিয়ান বলবিদ্যা | কাজ, শক্তি ও ক্ষমতা', dur: lang === 'bn' ? '১ ঘণ্টা ৩৫ মিনিট' : '1 hr 35 min', date: lang === 'bn' ? 'বৃহ ২রা জুলাই · রাত ৯:০০' : 'Thu, Jul 2 · 9:00 PM' },
-        { title: 'ভেক্টর রিভিশন | ডট ও ক্রস প্রোডাক্ট', dur: lang === 'bn' ? '১ ঘণ্টা ১২ মিনিট' : '1 hr 12 min', date: lang === 'bn' ? 'সোম ২৯শে জুন · রাত ৯:০০' : 'Mon, Jun 29 · 9:00 PM' }
-      ]
-    },
-    {
-      name: lang === 'bn' ? 'মডিউল ৭' : 'Module 7',
-      rows: [
-        { title: 'মহাকর্ষ ও অভিকর্ষ | কেপলারের সূত্র', dur: lang === 'bn' ? '১ ঘণ্টা ৪৮ মিনিট' : '1 hr 48 min', date: lang === 'bn' ? 'বুধ ২৪শে জুন · রাত ৯:০০' : 'Wed, Jun 24 · 9:00 PM' },
-        { title: 'গতির সমীকরণ | প্রজেক্টাইল মোশন', dur: lang === 'bn' ? '২ ঘণ্টা ৫ মিনিট' : '2 hr 5 min', date: lang === 'bn' ? 'শনি ২০শে জুন · রাত ৯:০০' : 'Sat, Jun 20 · 9:00 PM' }
-      ]
-    }
-  ];
+  // recordings the student can watch = ended live classes (with an uploaded recording)
+  // in the batches this student is enrolled in
+  const myBatchIds = new Set(enrollments.filter((e) => e.studentId === STUDENT_ID).map((e) => e.batchId));
+  const recorded = liveClasses.filter((c) => myBatchIds.has(c.batchId) && c.status === 'ended' && c.recordingUrl);
+
+  // group by batch (like a course playlist)
+  const groups = [];
+  for (const c of recorded) {
+    let g = groups.find((x) => x.batchId === c.batchId);
+    if (!g) { g = { batchId: c.batchId, name: batches.find((b) => b.id === c.batchId)?.name || '—', rows: [] }; groups.push(g); }
+    g.rows.push(c);
+  }
+
+  const watch = (c) => {
+    showToast(t.playRec);
+    window.open(c.recordingUrl, '_blank', 'noopener');
+  };
 
   return (
     <div className="anim-in">
       <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 18 }}>{t.sRecordings}</div>
-      {modules.map((m) => (
-        <div key={m.name} className="card" style={{ overflow: 'hidden', marginBottom: 18 }}>
-          <div style={{ padding: '14px 20px', fontWeight: 700, fontSize: 15, borderBottom: '1.5px solid var(--line)' }}>{m.name}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 160px 92px', gap: 12, padding: '10px 20px', background: 'var(--paper)', fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>
-            <div>{t.thTitle}</div><div>{t.thDur}</div><div>{t.thTime}</div><div style={{ textAlign: 'right' }}>{t.thAction}</div>
+
+      {groups.length === 0 && (
+        <div className="card" style={{ padding: '28px', textAlign: 'center', color: 'var(--faint)', fontSize: 14 }}>
+          {t.lcNoRecordings}
+        </div>
+      )}
+
+      {groups.map((m) => (
+        <div key={m.batchId} className="card" style={{ overflow: 'hidden', marginBottom: 18 }}>
+          <div style={{ padding: '14px 20px', fontWeight: 700, fontSize: 15, borderBottom: '1.5px solid var(--line)' }}>
+            {m.name} <span style={{ fontSize: 12.5, color: 'var(--faint)', fontWeight: 600 }}>· {m.rows.length}</span>
           </div>
-          {m.rows.map((r, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 160px 92px', gap: 12, padding: '14px 20px', borderTop: '1px solid var(--line-softer)', alignItems: 'center', fontSize: 13.5 }}>
-              <div style={{ fontWeight: 600, lineHeight: 1.5 }}>{r.title}</div>
-              <div style={{ color: 'var(--muted)' }}>{r.dur}</div>
-              <div style={{ color: 'var(--muted)' }}>{r.date}</div>
-              <div style={{ textAlign: 'right' }}>
-                <button className="btn-ghost-sm" onClick={() => showToast(t.playRec)}>▶ {t.watch}</button>
+          {m.rows.map((r) => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderTop: '1px solid var(--line-softer)', flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--green)', fontSize: 18, lineHeight: 1 }}>✓</span>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <div style={{ fontWeight: 600, fontSize: 13.5, lineHeight: 1.5 }}>{r.title}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--faint)' }}>{r.classDate}{r.startTime ? ` · ${r.startTime}` : ''}</div>
               </div>
+              <button className="btn-ghost-sm" onClick={() => watch(r)}>▶ {t.watch}</button>
             </div>
           ))}
         </div>

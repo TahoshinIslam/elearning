@@ -9,7 +9,6 @@ export default function FeesTab() {
   const bn = lang === 'bn';
 
   const collected = students.filter((s) => s.paid).reduce((a, s) => a + s.amount, 0);
-  const due = students.filter((s) => !s.paid).reduce((a, s) => a + s.amount, 0);
   const commission = Math.round(collected * 0.025);
 
   const revenue = payments.filter((p) => p.status === 'success').reduce((a, p) => a + p.amount, 0);
@@ -17,8 +16,8 @@ export default function FeesTab() {
 
   const handleMarkPaid = async (s) => {
     await markStudentPaid(s.id);
-    // Payment Service: persist a transaction for the fee
-    try { await api.recordPayment({ studentId: s.id, studentName: s.name, amount: s.amount, method: 'bkash', type: 'fee' }); } catch { /* ignore */ }
+    // Payment Service: persist a one-time course-purchase transaction
+    try { await api.recordPayment({ studentId: s.id, studentName: s.name, amount: s.amount, method: 'bkash', type: 'enrollment' }); } catch { /* ignore */ }
     showToast(bn ? 'পেমেন্ট রেকর্ড হয়েছে ✓' : 'Payment recorded ✓');
   };
 
@@ -59,7 +58,6 @@ export default function FeesTab() {
       <div className="card" style={{ padding: 20, marginBottom: 18 }}>
         <div style={{ display: 'flex', gap: 34, flexWrap: 'wrap' }}>
           {bigStat(t.collected, fmt(collected), 'var(--green)')}
-          {bigStat(t.pending, fmt(due), 'var(--brand)')}
           {payModel === 'B' && (
             <>
               {bigStat(t.commission, fmt(commission), '#7c3aed')}

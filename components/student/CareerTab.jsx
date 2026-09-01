@@ -3,11 +3,10 @@
 import { useApp } from '@/context/AppContext';
 import { statusLabel, statusChip, jobTypeLabel } from '@/lib/career';
 
-const STUDENT_ID = 1;
-const STUDENT_NAME = 'তানভীর আহমেদ';
-
 export default function CareerTab() {
-  const { t, jobs, applications, api, showToast } = useApp();
+  const { t, jobs, applications, api, showToast, auth } = useApp();
+  const STUDENT_ID = auth?.studentId;
+  const STUDENT_NAME = auth?.name;
 
   const openJobs = jobs.filter((j) => j.open);
   const myApps = applications.filter((a) => a.studentId === STUDENT_ID);
@@ -31,7 +30,7 @@ export default function CareerTab() {
       {openJobs.length === 0 ? (
         <div className="card" style={{ padding: 26, textAlign: 'center', color: 'var(--faint)', marginTop: 16 }}>{t.noJobs}</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 16, marginTop: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(280px,100%),1fr))', gap: 16, marginTop: 16 }}>
           {openJobs.map((j) => {
             const app = appForJob(j.id);
             return (

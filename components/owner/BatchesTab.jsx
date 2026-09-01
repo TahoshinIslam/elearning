@@ -74,7 +74,7 @@ export default function BatchesTab() {
               </select>
             </div>
             <div style={{ flex: 1, minWidth: 120 }}>
-              <label className="label" style={{ fontSize: 12.5, marginBottom: 5 }}>{t.monthlyFee}</label>
+              <label className="label" style={{ fontSize: 12.5, marginBottom: 5 }}>{t.courseFee}</label>
               <input style={fieldStyle} value={fee} onChange={(e) => setFee(e.target.value)} placeholder="1,500" />
             </div>
             <div style={{ flex: 2, minWidth: 180 }}>
@@ -89,7 +89,7 @@ export default function BatchesTab() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(280px,100%),1fr))', gap: 16 }}>
         {batches.map((b) => {
           const linked = courseTitle(b.courseId);
           return (
@@ -126,7 +126,7 @@ export default function BatchesTab() {
                   <div className="display" style={{ fontWeight: 800, fontSize: 18 }}>{b.students}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11.5, color: 'var(--faint)', fontWeight: 600 }}>{t.monthlyFee}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--faint)', fontWeight: 600 }}>{t.courseFee}</div>
                   <div className="display" style={{ fontWeight: 800, fontSize: 18 }}>৳{b.fee}</div>
                 </div>
               </div>

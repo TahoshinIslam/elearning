@@ -76,7 +76,7 @@ export default function InstructorPage() {
           {taught.length === 0 ? (
             <div className="card" style={{ padding: 24, textAlign: 'center', color: 'var(--faint)' }}>{t.instNoCourses}</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(240px,100%),1fr))', gap: 16 }}>
               {taught.map((c) => (
                 <button
                   key={c.id}

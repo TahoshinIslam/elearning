@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { catLabel, catMeta, courseCategories } from '@/lib/catalog';
+import Icon from '@/components/Icon';
 
 // Two-panel course browser (Ostad-style): categories on the left, courses on the right.
 // variant 'dropdown' → floating mega-menu in the navbar. variant 'section' → inline on a page.
@@ -16,7 +17,7 @@ export default function CourseMenu({ t, lang, courses, onNavigate, onClose, vari
   const catName = (key) => (key === 'all' ? t.catAllCourses : catLabel(t, key));
 
   const CategoryCard = ({ g }) => {
-    const meta = g.key === 'all' ? { icon: '🎓', color: 'var(--brand)' } : catMeta(g.key);
+    const meta = g.key === 'all' ? { icon: 'cap', color: 'var(--brand)' } : catMeta(g.key);
     const on = active === g.key;
     return (
       <button
@@ -30,9 +31,10 @@ export default function CourseMenu({ t, lang, courses, onNavigate, onClose, vari
         }}
       >
         <span style={{
-          width: 38, height: 38, flex: 'none', borderRadius: 10, display: 'grid', placeItems: 'center', fontSize: 18,
+          width: 38, height: 38, flex: 'none', borderRadius: 10, display: 'grid', placeItems: 'center',
+          color: on ? '#fff' : meta.color,
           background: on ? 'rgba(255,255,255,.12)' : `${meta.color}14`
-        }}>{meta.icon}</span>
+        }}><Icon name={meta.icon} size={19} /></span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', fontWeight: 700, fontSize: 14.5 }}>{catName(g.key)}</span>
           <span style={{ display: 'block', fontSize: 12, marginTop: 2, color: on ? 'rgba(255,255,255,.6)' : 'var(--faint)' }}>
@@ -66,14 +68,14 @@ export default function CourseMenu({ t, lang, courses, onNavigate, onClose, vari
   );
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px,1.1fr) minmax(300px,1fr)', gap: 30 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px,1.1fr) minmax(min(300px,100%),1fr)', gap: 30 }}>
       {/* left: categories */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
           <span style={{ fontSize: 15, fontWeight: 800 }}>{t.courseCategory}</span>
           <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: variant === 'dropdown' ? '1fr 1fr' : 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: variant === 'dropdown' ? '1fr 1fr' : 'repeat(auto-fit,minmax(min(220px,100%),1fr))', gap: 12 }}>
           {groups.filter((g) => g.key !== 'all').map((g) => <CategoryCard key={g.key} g={g} />)}
         </div>
         <button

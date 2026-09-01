@@ -41,7 +41,7 @@ export default function CareerAdmin() {
       {/* post job */}
       <div style={{ ...panel, padding: 18, marginBottom: 18 }}>
         <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 12 }}>{t.postJob}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(150px,100%),1fr))', gap: 10 }}>
           <input style={dk} placeholder={t.jobTitle} value={f.title} onChange={(e) => set('title', e.target.value)} />
           <input style={dk} placeholder={t.company} value={f.company} onChange={(e) => set('company', e.target.value)} />
           <input style={dk} placeholder={t.jobLocation} value={f.location} onChange={(e) => set('location', e.target.value)} />

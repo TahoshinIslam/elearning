@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useMemo, useCallback } from 'react';
+import { useRef, useEffect, useMemo, useCallback, useState } from 'react';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { makeStore } from '@/store/store';
 import {
@@ -11,9 +11,15 @@ import {
   setPayModel as setPayModelAction,
   setStudentPaidFlag,
   login as loginThunk,
+  register as registerThunk,
   logout as logoutThunk,
   showToast as showToastThunk,
-  hydrateAuth
+  hydrateAuth,
+  setCartOpen as setCartOpenAction,
+  hydrateCart,
+  addToCart as addToCartThunk,
+  removeFromCart as removeFromCartThunk,
+  clearCart as clearCartThunk
 } from '@/store/uiSlice';
 import {
   useGetStudentsQuery,
@@ -31,6 +37,7 @@ import {
   useGetCoursesQuery,
   useAddCourseMutation,
   useCourseOpMutation,
+  useCreateQuizMutation,
   useSetBatchCourseMutation,
   useGetEnrollmentsQuery,
   useEnrollMutation,
@@ -78,7 +85,7 @@ export function AppProvider({ children }) {
 // so existing components consume it unchanged.
 export function useApp() {
   const dispatch = useDispatch();
-  const { lang, auth, centerName, brandColor, payModel, toast, studentPaid } = useSelector((s) => s.ui);
+  const { lang, auth, authReady, centerName, brandColor, payModel, toast, studentPaid } = useSelector((s) => s.ui);
 
   // REST data via RTK Query (deduped/cached globally)
   const { data: students = [], isSuccess: sOk } = useGetStudentsQuery();
@@ -107,6 +114,7 @@ export function useApp() {
   const [toggleTenant] = useToggleTenantMutation();
   const [addCourse] = useAddCourseMutation();
   const [courseOp] = useCourseOpMutation();
+  const [createQuiz] = useCreateQuizMutation();
   const [setBatchCourse] = useSetBatchCourseMutation();
   const [enroll] = useEnrollMutation();
   const [unenroll] = useUnenrollMutation();
@@ -136,16 +144,30 @@ export function useApp() {
     // curriculum
     addCourse: (title) => addCourse({ title }).unwrap(),
     toggleCoursePublish: (courseId) => courseOp({ op: 'publish', courseId }).unwrap(),
+    toggleCourseFeatured: (courseId) => courseOp({ op: 'toggleFeatured', courseId }).unwrap(),
     addModule: (courseId, title) => courseOp({ op: 'addModule', courseId, title }).unwrap(),
     deleteModule: (courseId, moduleId) => courseOp({ op: 'deleteModule', courseId, moduleId }).unwrap(),
     addLesson: (courseId, moduleId, title, type) => courseOp({ op: 'addLesson', courseId, moduleId, title, type }).unwrap(),
     deleteLesson: (courseId, moduleId, lessonId) => courseOp({ op: 'deleteLesson', courseId, moduleId, lessonId }).unwrap(),
+    updateCourse: (courseId, patch) => courseOp({ op: 'updateCourse', courseId, ...patch }).unwrap(),
+    deleteCourse: (courseId) => courseOp({ op: 'deleteCourse', courseId }).unwrap(),
+    renameModule: (courseId, moduleId, title) => courseOp({ op: 'renameModule', courseId, moduleId, title }).unwrap(),
+    renameLesson: (courseId, moduleId, lessonId, title) => courseOp({ op: 'renameLesson', courseId, moduleId, lessonId, title }).unwrap(),
+    toggleLessonFree: (courseId, moduleId, lessonId) => courseOp({ op: 'toggleFree', courseId, moduleId, lessonId }).unwrap(),
+    moveLesson: (courseId, moduleId, lessonId, dir) => courseOp({ op: 'moveLesson', courseId, moduleId, lessonId, dir }).unwrap(),
+    reorderLessons: (courseId, moduleId, order) => courseOp({ op: 'reorderLessons', courseId, moduleId, order }).unwrap(),
     // enrollments
     enroll: (studentId, batchId) => enroll({ studentId, batchId }).unwrap(),
     unenroll: (id) => unenroll({ id }).unwrap(),
     // submissions
     submitAssignment: (payload) => submitAssignment(payload).unwrap(),
     gradeSubmission: (id, marks, feedback) => gradeSubmission({ id, marks, feedback }).unwrap(),
+    createAssignment: async (moduleId, title) => {
+      const res = await fetch('/api/assignments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ moduleId, title }) });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    },
     // attendance
     saveAttendance: (payload) => saveAttendance(payload).unwrap(),
     // certificates
@@ -169,8 +191,339 @@ export function useApp() {
     },
     // payments
     recordPayment: (payload) => recordPayment(payload).unwrap(),
-    refundPayment: (id) => refundPayment({ id }).unwrap()
-  }), [addStudent, importStudents, setStudentPaid, addBatch, setBatchCourse, addTeacher, assignTeacher, removeTeacherBatch, toggleTenant, addCourse, courseOp, enroll, unenroll, submitAssignment, gradeSubmission, saveAttendance, issueCertificate, postJob, toggleJob, applyJob, setApplicationStatus, scheduleClass, updateLiveClass, recordPayment, refundPayment]);
+    refundPayment: (id) => refundPayment({ id }).unwrap(),
+    // quizzes (imperative fetch — quiz data is lesson-scoped, not a global collection)
+    getQuiz: async (lessonId, mode) => {
+      const res = await fetch(`/api/quizzes?lessonId=${lessonId}${mode ? `&mode=${mode}` : ''}`);
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    },
+    saveQuiz: async (lessonId, questions) => {
+      const res = await fetch('/api/quizzes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId, questions })
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    },
+    // create a fresh quiz-type lesson (teacher/owner) → returns { lessonId, moduleId }
+    createQuiz: (payload) => createQuiz(payload).unwrap(),
+    submitQuiz: async (lessonId, answers) => {
+      const res = await fetch('/api/quizzes/attempt', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId, answers })
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data; // { score, maxScore }
+    },
+    getQuizResults: async (lessonId) => {
+      const res = await fetch(`/api/quizzes/results?lessonId=${lessonId}`);
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    },
+    // notifications
+    getNotifications: async () => {
+      const res = await fetch('/api/notifications');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    markNotifications: async (payload) => {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    announce: async (title, body) => {
+      const res = await fetch('/api/notifications/announce', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, body })
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data; // { sent }
+    },
+    // coupons
+    validateCoupon: async (code, amount) => {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, amount })
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data; // { discount, finalAmount }
+    },
+    getCoupons: async () => {
+      const res = await fetch('/api/coupons');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    createCoupon: async (payload) => {
+      const res = await fetch('/api/coupons', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    },
+    toggleCoupon: async (id, active) => {
+      const res = await fetch('/api/coupons', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, active })
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    deleteCoupon: async (id) => {
+      const res = await fetch('/api/coupons', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    // reports
+    getReport: async (type) => {
+      const res = await fetch(`/api/reports?type=${type}`);
+      if (!res.ok) return { columns: [], rows: [], summary: {} };
+      return res.json();
+    },
+    // reviews
+    submitReview: async (courseId, rating, text) => {
+      const res = await fetch('/api/reviews', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId, rating, text })
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    },
+    getReviews: async () => {
+      const res = await fetch('/api/reviews');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    setReviewStatus: async (id, status) => {
+      const res = await fetch('/api/reviews', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status })
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    setReviewFeatured: async (id, featured) => {
+      const res = await fetch('/api/reviews', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, featured })
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    // blog
+    getPosts: async (all) => {
+      const res = await fetch(`/api/blog${all ? '?all=1' : ''}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    getPost: async (slug) => {
+      const res = await fetch(`/api/blog/${slug}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    savePost: async (payload) => {
+      const method = payload.id ? 'PATCH' : 'POST';
+      const res = await fetch('/api/blog', {
+        method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    },
+    deletePost: async (id) => {
+      const res = await fetch('/api/blog', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    // contact
+    sendContact: async (payload) => {
+      const res = await fetch('/api/contact', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    },
+    getMessages: async () => {
+      const res = await fetch('/api/contact');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    markMessage: async (payload) => {
+      const res = await fetch('/api/contact', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    // homepage CMS
+    getHomepage: async () => {
+      const res = await fetch('/api/homepage');
+      if (!res.ok) return {};
+      return res.json();
+    },
+    saveHomepage: async (section, data) => {
+      const res = await fetch('/api/homepage', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ section, data })
+      });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    },
+    // learning paths
+    getPaths: async () => {
+      const res = await fetch('/api/paths');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    createPath: async (payload) => {
+      const res = await fetch('/api/paths', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    },
+    setPathCourse: async (pathId, courseId, remove) => {
+      const res = await fetch('/api/paths', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pathId, courseId, remove }) });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    deletePath: async (id) => {
+      const res = await fetch('/api/paths', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    // per-lesson Q&A
+    getThread: async (lessonId) => {
+      const res = await fetch(`/api/qa?lessonId=${lessonId}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    askQuestion: async (lessonId, body) => {
+      const res = await fetch('/api/qa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId, body }) });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    },
+    postAnswer: async (questionId, body) => {
+      const res = await fetch('/api/qa/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionId, body }) });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    },
+    // referral
+    getReferral: async () => {
+      const res = await fetch('/api/referrals');
+      if (!res.ok) return { code: '', count: 0, referred: [] };
+      return res.json();
+    },
+    // affiliates (admin)
+    getAffiliates: async () => {
+      const res = await fetch('/api/affiliates');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    createAffiliate: async (payload) => {
+      const res = await fetch('/api/affiliates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    },
+    toggleAffiliate: async (id, active) => {
+      const res = await fetch('/api/affiliates', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, active }) });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    deleteAffiliate: async (id) => {
+      const res = await fetch('/api/affiliates', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    // free demo classes
+    getDemoClasses: async (status) => {
+      const res = await fetch(`/api/demo-classes${status ? `?status=${status}` : ''}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    getDemoClass: async (slug) => {
+      const res = await fetch(`/api/demo-classes/${slug}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    registerDemoClass: async (slug) => {
+      const res = await fetch(`/api/demo-classes/${slug}/register`, { method: 'POST' });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    },
+    // categories
+    getCategories: async () => {
+      const res = await fetch('/api/categories');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    createCategory: async (payload) => {
+      const res = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    },
+    deleteCategory: async (id) => {
+      const res = await fetch('/api/categories', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    // user management
+    getUsers: async () => {
+      const res = await fetch('/api/users');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    setUserRole: async (id, role) => {
+      const res = await fetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, role }) });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    setUserStatus: async (id, status) => {
+      const res = await fetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    setUserSections: async (id, sections) => {
+      const res = await fetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, sections }) });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    createStaff: async (payload) => {
+      const res = await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    },
+    changePassword: async (oldPassword, newPassword) => {
+      const res = await fetch('/api/auth/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword, newPassword }) });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    },
+    // site settings
+    getSettings: async () => {
+      const res = await fetch('/api/settings');
+      if (!res.ok) return {};
+      return res.json();
+    },
+    saveSettings: async (patch) => {
+      const res = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+      const out = await res.json();
+      if (!res.ok) throw { status: res.status, data: out };
+      return out;
+    }
+  }), [addStudent, importStudents, setStudentPaid, addBatch, setBatchCourse, addTeacher, assignTeacher, removeTeacherBatch, toggleTenant, addCourse, courseOp, createQuiz, enroll, unenroll, submitAssignment, gradeSubmission, saveAttendance, issueCertificate, postJob, toggleJob, applyJob, setApplicationStatus, scheduleClass, updateLiveClass, recordPayment, refundPayment]);
 
   // demo CSV rows for the owner's "Import Excel/CSV" button
   const DEMO_CSV_ROWS = useMemo(() => ([
@@ -181,12 +534,13 @@ export function useApp() {
 
   const setLang = useCallback((l) => dispatch(setLangAction(l)), [dispatch]);
   const toggleLang = useCallback(() => dispatch(toggleLangAction()), [dispatch]);
-  const login = useCallback((role, name) => dispatch(loginThunk(role, name)), [dispatch]);
+  const login = useCallback((email, password) => dispatch(loginThunk(email, password)), [dispatch]);
+  const register = useCallback((payload) => dispatch(registerThunk(payload)), [dispatch]);
   const logout = useCallback(() => dispatch(logoutThunk()), [dispatch]);
   const setCenterName = useCallback((v) => dispatch(setCenterNameAction(v)), [dispatch]);
   const setBrandColor = useCallback((v) => dispatch(setBrandColorAction(v)), [dispatch]);
   const setPayModel = useCallback((v) => dispatch(setPayModelAction(v)), [dispatch]);
-  const showToast = useCallback((msg) => dispatch(showToastThunk(msg)), [dispatch]);
+  const showToast = useCallback((msg, kind) => dispatch(showToastThunk(msg, kind)), [dispatch]);
   // client-only student payment flag (student PayModal → parent/ClassesTab read it)
   const setStudentPaidFlagCb = useCallback((v) => dispatch(setStudentPaidFlag(v)), [dispatch]);
 
@@ -197,18 +551,53 @@ export function useApp() {
   }, [api, DEMO_CSV_ROWS]);
   const markStudentPaid = useCallback((id) => api.setStudentPaid(id, true), [api]);
 
+  // ---------- wishlist (shared course-id set for the logged-in student) ----------
+  const [wishlist, setWishlist] = useState([]);
+  useEffect(() => {
+    if (auth?.studentId) {
+      fetch('/api/wishlist').then((r) => (r.ok ? r.json() : [])).then(setWishlist).catch(() => setWishlist([]));
+    } else {
+      setWishlist([]);
+    }
+  }, [auth?.studentId]);
+  const toggleWishlist = useCallback(async (courseId) => {
+    const saved = wishlist.includes(courseId);
+    const res = await fetch('/api/wishlist', {
+      method: saved ? 'DELETE' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseId })
+    });
+    if (res.ok) setWishlist(await res.json());
+  }, [wishlist]);
+
+  // ---------- shopping cart (Redux-backed so every component shares one cart) ----------
+  const cart = useSelector((s) => s.ui.cart);
+  const cartOpen = useSelector((s) => s.ui.cartOpen);
+  useEffect(() => { dispatch(hydrateCart()); }, [dispatch]);
+  const isInCart = useCallback((courseId) => cart.some((x) => x.id === courseId), [cart]);
+  const addToCart = useCallback((course) => dispatch(addToCartThunk(course)), [dispatch]);
+  const removeFromCart = useCallback((courseId) => dispatch(removeFromCartThunk(courseId)), [dispatch]);
+  const clearCart = useCallback(() => dispatch(clearCartThunk()), [dispatch]);
+  const setCartOpen = useCallback((open) => dispatch(setCartOpenAction(open)), [dispatch]);
+  const cartCount = cart.length;
+  const cartTotal = cart.reduce((a, x) => a + Number(x.price || 0), 0);
+
   const t = T[lang];
   const centerDisplay = centerName.trim() || 'আলোর পথ কোচিং';
   const slug = centerName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '') || 'alorpath';
 
   return {
     lang, setLang, toggleLang, t,
-    auth, login, logout,
+    auth, authReady, login, register, logout,
     centerName, setCenterName, centerDisplay, slug,
     brandColor, setBrandColor,
     payModel, setPayModel,
     students, batches, teachers, tenants, courses, enrollments, submissions, attendance, certificates, jobs, applications, liveClasses, payments, loaded,
     toast, showToast,
+    // wishlist (student)
+    wishlist, toggleWishlist,
+    // shopping cart (e-commerce)
+    cart, cartOpen, setCartOpen, addToCart, removeFromCart, clearCart, isInCart, cartCount, cartTotal,
     // client-only student payment flag
     studentPaid, setStudentPaid: setStudentPaidFlagCb,
     // top-level mutation helpers (original context shape)

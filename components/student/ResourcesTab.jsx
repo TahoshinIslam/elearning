@@ -28,16 +28,13 @@ export default function ResourcesTab() {
       {modules.map((m) => (
         <div key={m.name} className="card" style={{ overflow: 'hidden', marginBottom: 18 }}>
           <div style={{ padding: '14px 20px', fontWeight: 700, fontSize: 15, borderBottom: '1.5px solid var(--line)' }}>{m.name}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px 100px', gap: 12, padding: '10px 20px', background: 'var(--paper)', fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>
-            <div>{t.thTitle}</div><div>{t.thTime}</div><div style={{ textAlign: 'right' }}>{t.thAction}</div>
-          </div>
           {m.rows.map((r, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 200px 100px', gap: 12, padding: '14px 20px', borderTop: '1px solid var(--line-softer)', alignItems: 'center', fontSize: 13.5 }}>
-              <div style={{ fontWeight: 600, lineHeight: 1.5 }}>{r.title}</div>
-              <div style={{ color: 'var(--muted)' }}>{r.date}</div>
-              <div style={{ textAlign: 'right' }}>
-                <button className="btn-ghost-sm" onClick={() => showToast(t.openRes)}>{t.check}</button>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderTop: '1px solid var(--line-softer)', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <div style={{ fontWeight: 600, fontSize: 13.5, lineHeight: 1.5 }}>{r.title}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{r.date}</div>
               </div>
+              <button className="btn-ghost-sm" style={{ flex: 'none' }} onClick={() => showToast(t.openRes)}>{t.check}</button>
             </div>
           ))}
         </div>

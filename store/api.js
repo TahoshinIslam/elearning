@@ -67,6 +67,11 @@ export const api = createApi({
       query: (body) => ({ url: '/courses', method: 'PATCH', body }),
       invalidatesTags: ['Courses']
     }),
+    // teacher-allowed: create a new quiz-type lesson (refetches Courses so it appears)
+    createQuiz: build.mutation({
+      query: (body) => ({ url: '/quizzes/lesson', method: 'POST', body }),
+      invalidatesTags: ['Courses']
+    }),
 
     // ---------- enrollments (student ↔ batch → course) ----------
     getEnrollments: build.query({ query: () => '/enrollments', providesTags: ['Enrollments'] }),
@@ -165,6 +170,7 @@ export const {
   useGetCoursesQuery,
   useAddCourseMutation,
   useCourseOpMutation,
+  useCreateQuizMutation,
   useGetEnrollmentsQuery,
   useEnrollMutation,
   useUnenrollMutation,

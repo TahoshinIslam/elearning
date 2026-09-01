@@ -1,9 +1,11 @@
 'use client';
 
 import { useApp } from '@/context/AppContext';
+import RoleGuard from '@/components/RoleGuard';
+import SiteNav from '@/components/SiteNav';
 import CareerAdmin from '@/components/superadmin/CareerAdmin';
 
-export default function SuperAdminPage() {
+function SuperAdminPageInner() {
   const { t, lang, tenants, toggleTenant, showToast } = useApp();
 
   const activeCount = tenants.filter((x) => x.status === 'active').length;
@@ -48,6 +50,8 @@ export default function SuperAdminPage() {
   );
 
   return (
+    <>
+    <SiteNav />
     <div className="anim-in" style={{ background: 'var(--coal)', minHeight: 'calc(100vh - 51px)', color: '#fff', padding: '30px 32px 90px' }}>
       <div style={{ maxWidth: 1060, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 22 }}>
@@ -55,7 +59,7 @@ export default function SuperAdminPage() {
           <span style={{ fontSize: 12.5, color: 'rgba(255,255,255,.5)' }}>{t.superS}</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 26 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(180px,100%),1fr))', gap: 14, marginBottom: 26 }}>
           {statCard(t.activeCenters, activeCount, '#ff8a3d')}
           {statCard('MRR', '৳' + mrrTotal.toLocaleString('en-IN'))}
           {statCard(t.trials, trialCount)}
@@ -107,5 +111,10 @@ export default function SuperAdminPage() {
         <CareerAdmin />
       </div>
     </div>
+    </>
   );
+}
+
+export default function SuperAdminPage() {
+  return <RoleGuard allow="superadmin"><SuperAdminPageInner /></RoleGuard>;
 }

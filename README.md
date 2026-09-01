@@ -97,9 +97,31 @@ Recommended production stack: **Supabase/Neon Postgres + Prisma**, **Clerk** for
 
 Design tokens live in `app/globals.css` as CSS variables (`--brand`, `--paper`, `--coal`, …) plus reusable classes (`.card`, `.btn-primary`, `.chip`, `.side-tab`, `.progress-track`…). Typography: **Hind Siliguri** for body (great Bangla rendering) and **Archivo** heavy weights for numbers/display. The tenant's brand color chosen in onboarding flows through to their landing page.
 
+## 🔐 Authentication & RBAC
+
+Real credential auth backed by a `users` table (migration `003_users.sql`).
+Passwords are scrypt-hashed; the session is an HMAC-signed httpOnly cookie
+(`lib/auth.js`, no external dependency). Permissions live in `lib/rbac.js` as
+`resource:action` grants (with `*` wildcards) and are enforced **both** on the
+client (`RoleGuard` around each dashboard) and the server (`requireRole` /
+`requireUser` on the mutation API routes).
+
+```bash
+# one-time: create the accounts table + seed demo users
+mysql -u root e-learning < database/migrations/003_users.sql
+node database/seed_users.mjs        # all demo accounts use password: demo1234
+```
+
+Set `AUTH_SECRET` in `.env.local` for a stable session-signing key (a dev
+default is provided). Demo accounts (password `demo1234`): `student@`,
+`teacher@`, `parent@`, `owner@`, `superadmin@` `leolearning.app`. The login page
+also has one-click quick-login buttons for each. Self-signup (`/register`) is
+open to student/parent; `/forgot` + `/reset` cover password recovery (the token
+is returned inline since SMTP isn't wired yet).
+
 ## ✅ What's demo-only (by design)
 
-- Login/auth (no auth yet — the prototype bar switches roles)
 - bKash payment (full UI flow, fake TrxID; wire the merchant API later)
 - Live class join, recordings, resources (toast placeholders; wire Agora/Bunny later)
 - CSV import (adds 2 sample rows; wire a real file parser later)
+- Email verification / OTP / social login (auth foundation is real; these are not wired)
