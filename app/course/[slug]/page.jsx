@@ -7,6 +7,7 @@ import SiteNav from '@/components/SiteNav';
 import CheckoutModal from '@/components/CheckoutModal';
 import ReviewForm from '@/components/ReviewForm';
 import LessonQAModal from '@/components/LessonQAModal';
+import VideoPlayer from '@/components/VideoPlayer';
 import { modeLabel, modeChip } from '@/lib/catalog';
 
 const LESSON_ICON = { video: '▶', pdf: '📄', quiz: '❓', assignment: '✍' };
@@ -20,12 +21,12 @@ function CourseDetails() {
   const { slug } = useParams();
   const router = useRouter();
   const search = useSearchParams();
-  const { t, lang, loaded, auth, courses, batches, enrollments, showToast, api, wishlist, toggleWishlist } = useApp();
+  const { t, lang, loaded, auth, courses, batches, enrollments, showToast, wishlist, toggleWishlist } = useApp();
   const STUDENT_ID = auth?.studentId;
-  const STUDENT_NAME = auth?.name;
   const [openFaq, setOpenFaq] = useState(null);
   const [checkout, setCheckout] = useState(false);
   const [qaLesson, setQaLesson] = useState(null);
+  const [previewLesson, setPreviewLesson] = useState(null);
   const enrollTriedRef = useRef(false);
 
   const course = loaded ? courses.find((c) => c.slug === slug) : null;
@@ -37,7 +38,6 @@ function CourseDetails() {
     enrollTriedRef.current = true;
     const already = enrollments.some((e) => e.studentId === STUDENT_ID && e.courseId === course.id);
     if (already) { router.replace('/student'); return; }
-    if (!batches.find((b) => b.courseId === course.id)) { showToast(t.cdNoBatch); return; }
     setCheckout(true); // return-to-checkout: land back here and complete enrollment
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, course, auth, search]);
@@ -73,32 +73,29 @@ function CourseDetails() {
       return;
     }
     if (auth.role !== 'student') { showToast(t.roleStudent); return; }
-    if (!courseBatches[0]) { showToast(t.cdNoBatch); return; }
     setCheckout(true);
   };
 
-  // called by CheckoutModal after free-confirm or successful payment
-  const confirmEnroll = async (couponCode) => {
-    const batch = courseBatches[0];
-    // Payment Service: record a transaction only for paid courses.
-    // The coupon (if any) is applied + redeemed server-side; amount here is the pre-discount price.
-    if (course.price > 0) {
-      try {
-        await api.recordPayment({
-          studentId: STUDENT_ID, studentName: STUDENT_NAME,
-          courseId: course.id, batchId: batch.id, amount: course.price, method: 'bkash', type: 'enrollment',
-          ...(couponCode ? { couponCode } : {}),
-          ...(search.get('aff') ? { affiliateCode: search.get('aff') } : {})
-        });
-      } catch { /* ignore */ }
-    }
-    try { await api.enroll(STUDENT_ID, batch.id); } catch { /* already enrolled */ }
+  // Called by CheckoutModal only for the free/instant-paid path — the server
+  // (POST /api/orders) has already created the order and the enrollment by
+  // the time this runs. A paid purchase never calls this: CheckoutModal
+  // redirects the whole page to bKash instead.
+  const confirmEnroll = async () => {
     showToast(t.enrolledToastCourse);
     setCheckout(false);
     router.push('/student');
   };
 
-  const lessonClick = (l) => showToast(l.free ? t.cdPreviewToast : t.cdLockedToast);
+  // Free lessons open a real, entitlement-checked preview player right here —
+  // VideoPlayer re-verifies is_free server-side itself, so this works for a
+  // guest with no account at all. Enrolled students land in the full player
+  // (see the "Continue course" button below); anyone else clicking a locked
+  // lesson just gets pointed at enrolling.
+  const lessonClick = (l) => {
+    if (isEnrolled) { router.push(`/learn/${course.slug}/${l.id}`); return; }
+    if (l.type === 'video' && l.free) { setPreviewLesson(l); return; }
+    showToast(l.free ? t.cdPreviewToast : t.cdLockedToast);
+  };
 
   const section = { fontSize: 19, fontWeight: 700, margin: '0 0 14px' };
 
@@ -229,7 +226,11 @@ function CourseDetails() {
           {/* sticky purchase sidebar */}
           <div style={{ position: 'sticky', top: 70 }}>
             <div className="card" style={{ overflow: 'hidden' }}>
-              <div className="placeholder-art" style={{ height: 150, fontSize: 12 }}>{course.thumb || 'course'} · banner</div>
+              {course.thumbnailUrl ? (
+                <img src={course.thumbnailUrl} alt={course.title} style={{ height: 150, width: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div className="placeholder-art" style={{ height: 150, fontSize: 12 }}>{course.thumb || 'course'} · banner</div>
+              )}
               <div style={{ padding: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                   <span className="display" style={{ fontSize: 28 }}>{free ? t.cdFree : `৳${course.price}`}</span>
@@ -241,7 +242,7 @@ function CourseDetails() {
                 {isEnrolled ? (
                   <>
                     <div className="chip chip-green" style={{ marginTop: 14, width: '100%', justifyContent: 'center', display: 'flex' }}>{t.cdEnrolledChip}</div>
-                    <button className="btn-dark" style={{ width: '100%', marginTop: 10, borderRadius: 11, padding: 12 }} onClick={() => router.push('/student')}>{t.continueCourse} →</button>
+                    <button className="btn-dark" style={{ width: '100%', marginTop: 10, borderRadius: 11, padding: 12 }} onClick={() => router.push(`/learn/${course.slug}`)}>{t.continueCourse} →</button>
                   </>
                 ) : (
                   <button className="btn-primary" style={{ width: '100%', marginTop: 14, padding: 13, fontSize: 15 }} onClick={onEnroll}>
@@ -295,10 +296,32 @@ function CourseDetails() {
       </div>
 
       {checkout && (
-        <CheckoutModal course={course} batch={courseBatches[0]} t={t} onClose={() => setCheckout(false)} onConfirm={confirmEnroll} />
+        <CheckoutModal
+          course={course}
+          batch={courseBatches[0]}
+          t={t}
+          onClose={() => setCheckout(false)}
+          onConfirm={confirmEnroll}
+          affiliateCode={search.get('aff') || undefined}
+        />
       )}
 
       {qaLesson && <LessonQAModal lesson={qaLesson} onClose={() => setQaLesson(null)} />}
+
+      {previewLesson && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(22,19,15,.7)', zIndex: 90, display: 'grid', placeItems: 'center', padding: 20 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setPreviewLesson(null); }}
+        >
+          <div style={{ width: 'min(760px,100%)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: 14.5 }}>{previewLesson.title}</div>
+              <button aria-label="Close" onClick={() => setPreviewLesson(null)} style={{ border: 'none', background: 'rgba(255,255,255,.15)', color: '#fff', borderRadius: 8, width: 30, height: 30, fontSize: 14 }}>✕</button>
+            </div>
+            <VideoPlayer lessonId={previewLesson.id} />
+          </div>
+        </div>
+      )}
     </>
   );
 }

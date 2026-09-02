@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import Icon from '@/components/Icon';
+import VideoUploadControl from '@/components/owner/VideoUploadControl';
+import ThumbnailUploadControl from '@/components/owner/ThumbnailUploadControl';
 
 const LESSON_TYPES = [
   { key: 'video', icon: 'play', chip: 'chip-orange' },
@@ -88,13 +90,37 @@ export default function CoursesTab() {
     showToast(bn ? 'কোর্স তৈরি হয়েছে' : 'Course created');
   };
 
+  const MISSING_LABEL = { lessons: bn ? 'অন্তত ১টি লেসন' : 'at least one lesson', description: bn ? 'বিবরণ' : 'a description', price: bn ? 'মূল্য' : 'a price' };
   const togglePublish = async (c) => {
-    await api.toggleCoursePublish(c.id);
-    showToast(
-      c.published
-        ? bn ? 'কোর্স আনপাবলিশ হয়েছে' : 'Course unpublished'
-        : bn ? 'কোর্স পাবলিশ হয়েছে' : 'Course published'
-    );
+    try {
+      await api.toggleCoursePublish(c.id);
+      showToast(
+        c.published
+          ? bn ? 'কোর্স আনপাবলিশ হয়েছে' : 'Course unpublished'
+          : bn ? 'কোর্স পাবলিশ হয়েছে' : 'Course published'
+      );
+    } catch (e) {
+      const missing = e?.data?.missing;
+      if (e?.data?.error === 'incomplete_course' && missing?.length) {
+        showToast(`${bn ? 'পাবলিশ করার আগে যোগ করুন: ' : 'Add before publishing: '}${missing.map((k) => MISSING_LABEL[k] || k).join(', ')}`);
+      } else {
+        showToast(t.errGeneric);
+      }
+    }
+  };
+
+  const submitForReview = async (c) => {
+    try {
+      await api.courseReviewAction(c.id, 'submit');
+      showToast(bn ? 'রিভিউর জন্য জমা দেওয়া হয়েছে' : 'Submitted for review');
+    } catch (e) {
+      const missing = e?.data?.missing;
+      if (e?.data?.error === 'incomplete_course' && missing?.length) {
+        showToast(`${bn ? 'জমা দেওয়ার আগে যোগ করুন: ' : 'Add before submitting: '}${missing.map((k) => MISSING_LABEL[k] || k).join(', ')}`);
+      } else {
+        showToast(t.errGeneric);
+      }
+    }
   };
 
   const addModule = async (courseId) => {
@@ -159,17 +185,30 @@ export default function CoursesTab() {
                     <span className={`chip ${c.published ? 'chip-green' : 'chip-stone'}`}>
                       {c.published ? t.cbPublished : t.cbDraft}
                     </span>
+                    {c.reviewStatus === 'pending_review' && (
+                      <span className="chip chip-violet">{bn ? 'রিভিউ অপেক্ষমাণ' : 'Pending review'}</span>
+                    )}
                     {c.featured && <span className="chip chip-orange" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="star" size={12} /> {t.courseFeatured}</span>}
                     {c.price > 0 && <span className="chip chip-orange">৳{c.price}</span>}
                   </div>
                   <div className="mono" style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 3 }}>
                     {c.slug} · {c.modules.length} {t.cbModules} · {lessonCount} {t.cbLessons}
                   </div>
+                  {c.reviewNote && (
+                    <div style={{ fontSize: 12, color: 'var(--danger,#c92a2a)', marginTop: 6, background: '#fef2f2', borderRadius: 8, padding: '6px 10px' }}>
+                      {bn ? 'রিভিউয়ারের মন্তব্য: ' : 'Reviewer feedback: '}{c.reviewNote}
+                    </div>
+                  )}
                 </div>
                 <button className="btn-ghost-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => startEdit(c)}><Icon name="edit" size={13} /> {t.cbEdit}</button>
                 <button className="btn-ghost-sm" style={{ color: c.featured ? 'var(--brand)' : 'var(--muted)' }} onClick={() => api.toggleCourseFeatured(c.id).then(() => showToast(c.featured ? t.courseUnfeatured || 'Unfeatured' : t.courseFeatured, 'info'))} title={t.courseFeatured}>
                   <Icon name="star" size={15} />
                 </button>
+                {!c.published && c.reviewStatus !== 'pending_review' && (
+                  <button className="btn-ghost-sm" onClick={() => submitForReview(c)}>
+                    {bn ? 'রিভিউর জন্য জমা দিন' : 'Submit for review'}
+                  </button>
+                )}
                 <button className="btn-ghost-sm" onClick={() => togglePublish(c)}>
                   {c.published ? t.cbUnpublish : t.cbPublish}
                 </button>
@@ -218,6 +257,9 @@ export default function CoursesTab() {
                   </label>
                   <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', gridColumn: '1 / -1' }}>{t.cdDescription}
                     <textarea value={editCourse.description} onChange={(e) => setEditCourse((s) => ({ ...s, description: e.target.value }))} rows={3} style={{ ...inputStyle, width: '100%', marginTop: 4, resize: 'vertical' }} />
+                  </label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', gridColumn: '1 / -1' }}>{bn ? 'থাম্বনেইল' : 'Thumbnail'}
+                    <div style={{ marginTop: 4 }}><ThumbnailUploadControl courseId={c.id} currentUrl={c.thumbnailUrl} /></div>
                   </label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn-primary" onClick={saveEdit}>{t.cbSave}</button>
@@ -311,6 +353,7 @@ export default function CoursesTab() {
                                     >
                                       <Icon name={l.free ? 'eye' : 'lock'} size={12} /> {l.free ? t.cbDemo : t.cbLocked}
                                     </button>
+                                    {l.type === 'video' && <VideoUploadControl lessonId={l.id} />}
                                     {/* reorder */}
                                     <button className="btn-ghost-sm" onClick={() => api.moveLesson(c.id, m.id, l.id, 'up')} aria-label="move up"><Icon name="arrowUp" size={14} /></button>
                                     <button className="btn-ghost-sm" onClick={() => api.moveLesson(c.id, m.id, l.id, 'down')} aria-label="move down"><Icon name="arrowDown" size={14} /></button>

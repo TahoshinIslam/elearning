@@ -456,3 +456,17 @@ body {
   .main-pane { padding: 20px 16px 80px; }
   .hide-mobile { display: none !important; }
 }
+
+/* learning player (app/learn) — video-first on mobile, sidebar alongside on desktop */
+.learn-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 20px 60px;
+}
+@media (max-width: 860px) {
+  .learn-shell { grid-template-columns: 1fr; padding: 12px 14px 60px; }
+}

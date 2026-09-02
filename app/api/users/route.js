@@ -22,10 +22,10 @@ export async function POST(request) {
 // PATCH { id, role } | { id, status } | { id, sections[] }
 export async function PATCH(request) {
   try {
-    requireRole('owner', 'superadmin');
+    const session = requireRole('owner', 'superadmin');
     const body = await request.json();
     if (body.sections !== undefined) return NextResponse.json(await setUserSections(body));
-    if (body.status !== undefined) return NextResponse.json(await setUserStatus(body));
-    return NextResponse.json(await setUserRole(body));
+    if (body.status !== undefined) return NextResponse.json(await setUserStatus(session, body));
+    return NextResponse.json(await setUserRole(session, body));
   } catch (e) { return errResponse(e); }
 }

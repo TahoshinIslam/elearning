@@ -4,6 +4,7 @@ import { useApp } from '@/context/AppContext';
 import RoleGuard from '@/components/RoleGuard';
 import SiteNav from '@/components/SiteNav';
 import CareerAdmin from '@/components/superadmin/CareerAdmin';
+import CourseReviewQueue from '@/components/superadmin/CourseReviewQueue';
 
 function SuperAdminPageInner() {
   const { t, lang, tenants, toggleTenant, showToast } = useApp();
@@ -106,6 +107,9 @@ function SuperAdminPageInner() {
             </div>
           ))}
         </div>
+
+        {/* course publishing oversight */}
+        <CourseReviewQueue />
 
         {/* career portal management */}
         <CareerAdmin />

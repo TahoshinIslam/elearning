@@ -68,7 +68,11 @@ function Catalog() {
     const b = batchFor(c.id);
     return (
       <div className="card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div className="placeholder-art" style={{ height: 150, fontSize: 11 }}>{c.thumb || 'course'} · banner</div>
+        {c.thumbnailUrl ? (
+          <img src={c.thumbnailUrl} alt={c.title} style={{ height: 150, width: '100%', objectFit: 'cover' }} />
+        ) : (
+          <div className="placeholder-art" style={{ height: 150, fontSize: 11 }}>{c.thumb || 'course'} · banner</div>
+        )}
         <div style={{ padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {c.featured && <Chip><Icon name="star" size={11} /> {t.courseFeatured}</Chip>}

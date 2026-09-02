@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 
 const TYPES = [
+  { key: 'courses', label: 'reportCourses' },
   { key: 'sales', label: 'reportSales' },
   { key: 'students', label: 'reportStudents' },
   { key: 'attendance', label: 'reportAttendance' }
@@ -11,7 +12,7 @@ const TYPES = [
 
 export default function ReportsTab() {
   const { t, api } = useApp();
-  const [type, setType] = useState('sales');
+  const [type, setType] = useState('courses');
   const [data, setData] = useState({ columns: [], rows: [], summary: {} });
   const [loading, setLoading] = useState(true);
 
@@ -24,6 +25,7 @@ export default function ReportsTab() {
   const s = data.summary || {};
 
   const cards = {
+    courses: [[t.reportRevenue, money(s.revenue), 'var(--green)'], [t.reportEnrolled, s.enrolled ?? 0], [t.reportPublished, s.published ?? 0, 'var(--brand)']],
     sales: [[t.reportRevenue, money(s.revenue), 'var(--green)'], [t.reportRefunded, money(s.refunded), 'var(--brand)'], [t.reportTransactions, s.transactions ?? 0]],
     students: [[t.reportTotal, s.students ?? 0], [t.reportPaid, s.paid ?? 0, 'var(--green)']],
     attendance: [[t.reportStudents, s.students ?? 0]]
@@ -78,7 +80,7 @@ export default function ReportsTab() {
                 <tr key={i} className="row-line">
                   {data.columns.map((c) => (
                     <td key={c.key} style={{ padding: '11px 16px', borderBottom: '1px solid var(--line)', whiteSpace: 'nowrap' }}>
-                      {c.key === 'amount' ? money(r[c.key]) : String(r[c.key] ?? '—')}
+                      {c.key === 'amount' || c.key === 'revenue' ? money(r[c.key]) : String(r[c.key] ?? '—')}
                     </td>
                   ))}
                 </tr>

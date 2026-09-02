@@ -7,7 +7,7 @@ import Icon from '@/components/Icon';
 // Right-side slide-in shopping cart (e-commerce style). Driven by cart state in
 // AppContext; opens whenever a course is added or the navbar cart button is clicked.
 export default function CartDrawer() {
-  const { t, cart, cartOpen, setCartOpen, removeFromCart, clearCart, cartTotal, auth, batches, api, showToast } = useApp();
+  const { t, cart, cartOpen, setCartOpen, removeFromCart, clearCart, cartTotal, auth, api, showToast } = useApp();
   const router = useRouter();
 
   const fmt = (n) => (n === 0 ? t.cdFree : `৳${Number(n).toLocaleString('en-IN')}`);
@@ -21,23 +21,21 @@ export default function CartDrawer() {
       router.push('/login?returnTo=/courses');
       return;
     }
-    // best-effort enrol the student into each course's batch + record the purchase
-    let ok = 0;
-    for (const item of cart) {
-      const batch = batches.find((b) => b.courseId === item.id);
-      if (!batch) continue;
-      try {
-        await api.enroll(auth.studentId, batch.id);
-        if (item.price > 0) {
-          await api.recordPayment({ studentId: auth.studentId, studentName: auth.name, courseId: item.id, batchId: batch.id, amount: item.price, method: 'bkash', type: 'enrollment' });
-        }
-        ok++;
-      } catch { /* already enrolled / ignore */ }
+    // Server computes the authoritative total for every item and either
+    // enrolls immediately (a free cart) or hands back a bKash redirect.
+    try {
+      const result = await api.createOrder({ items: cart.map((item) => ({ courseId: item.id })) });
+      clearCart();
+      setCartOpen(false);
+      if (result.paid) {
+        showToast(t.cartOrderPlaced, 'success');
+        router.push('/student');
+      } else if (result.bkashURL) {
+        window.location.href = result.bkashURL;
+      }
+    } catch {
+      showToast(t.errGeneric, 'error');
     }
-    clearCart();
-    setCartOpen(false);
-    showToast(t.cartOrderPlaced, 'success');
-    router.push('/student');
   };
 
   return (

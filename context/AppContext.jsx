@@ -92,7 +92,7 @@ export function useApp() {
   const { data: batches = [], isSuccess: bOk } = useGetBatchesQuery();
   const { data: teachers = [], isSuccess: tOk } = useGetTeachersQuery();
   const { data: tenants = [], isSuccess: tnOk } = useGetTenantsQuery();
-  const { data: courses = [], isSuccess: cOk } = useGetCoursesQuery();
+  const { data: courses = [], isSuccess: cOk, refetch: refetchCourses } = useGetCoursesQuery();
   const { data: enrollments = [], isSuccess: eOk } = useGetEnrollmentsQuery();
   const { data: submissions = [], isSuccess: subOk } = useGetSubmissionsQuery();
   const { data: attendance = [], isSuccess: aOk } = useGetAttendanceQuery();
@@ -100,8 +100,14 @@ export function useApp() {
   const { data: jobs = [], isSuccess: jOk } = useGetJobsQuery();
   const { data: applications = [], isSuccess: apOk } = useGetApplicationsQuery();
   const { data: liveClasses = [], isSuccess: lcOk } = useGetLiveClassesQuery();
-  const { data: payments = [], isSuccess: pOk } = useGetPaymentsQuery();
-  const loaded = sOk && bOk && tOk && tnOk && cOk && eOk && subOk && aOk && ceOk && jOk && apOk && lcOk && pOk;
+  // Staff-only endpoint (POST/GET /api/payments requires owner/teacher/
+  // superadmin) — skip it entirely for everyone else so it neither fires a
+  // request that's guaranteed to 401/403 nor (see below) blocks `loaded`.
+  const isStaff = auth?.role === 'owner' || auth?.role === 'teacher' || auth?.role === 'superadmin';
+  const { data: payments = [] } = useGetPaymentsQuery(undefined, { skip: !isStaff });
+  // Deliberately excludes payments: it's a staff-dashboard concern, not
+  // something every visitor's page load should depend on.
+  const loaded = sOk && bOk && tOk && tnOk && cOk && eOk && subOk && aOk && ceOk && jOk && apOk && lcOk;
 
   // mutation triggers
   const [addStudent] = useAddStudentMutation();
@@ -151,6 +157,42 @@ export function useApp() {
     deleteLesson: (courseId, moduleId, lessonId) => courseOp({ op: 'deleteLesson', courseId, moduleId, lessonId }).unwrap(),
     updateCourse: (courseId, patch) => courseOp({ op: 'updateCourse', courseId, ...patch }).unwrap(),
     deleteCourse: (courseId) => courseOp({ op: 'deleteCourse', courseId }).unwrap(),
+    // publishing workflow — submit is owner, approve/reject is superadmin-only.
+    // Plain fetch (not an RTK mutation), so refetch the cached course list
+    // ourselves — otherwise the review-status badge would only update after
+    // an unrelated cache invalidation elsewhere.
+    courseReviewAction: async (courseId, action, note) => {
+      const res = await fetch(`/api/courses/${courseId}/review`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, note })
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      refetchCourses();
+      return data;
+    },
+    getReviewQueue: async () => {
+      const res = await fetch('/api/courses/review-queue');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    // thumbnail: presigned upload straight to the bucket, then confirm
+    requestThumbnailUploadUrl: async (courseId, fileName, contentType) => {
+      const res = await fetch(`/api/courses/${courseId}/thumbnail/upload-url`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileName, contentType })
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data; // { uploadUrl, key }
+    },
+    confirmThumbnail: async (courseId, key) => {
+      const res = await fetch(`/api/courses/${courseId}/thumbnail`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key })
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      refetchCourses();
+      return data;
+    },
     renameModule: (courseId, moduleId, title) => courseOp({ op: 'renameModule', courseId, moduleId, title }).unwrap(),
     renameLesson: (courseId, moduleId, lessonId, title) => courseOp({ op: 'renameLesson', courseId, moduleId, lessonId, title }).unwrap(),
     toggleLessonFree: (courseId, moduleId, lessonId) => courseOp({ op: 'toggleFree', courseId, moduleId, lessonId }).unwrap(),
@@ -189,9 +231,20 @@ export function useApp() {
       if (!res.ok) throw { status: res.status, data };
       return data; // { url }
     },
-    // payments
+    // payments (staff-only manual fee recording — real checkout is createOrder below)
     recordPayment: (payload) => recordPayment(payload).unwrap(),
     refundPayment: (id) => refundPayment({ id }).unwrap(),
+    // real checkout: server computes price + coupon, creates a pending order,
+    // and either enrolls immediately (free) or returns a bKash redirect URL.
+    // payload: { courseId } or { items: [{courseId}], couponCode?, affiliateCode? }
+    createOrder: async (payload) => {
+      const res = await fetch('/api/orders', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data; // { order, paid: true } or { order, bkashURL }
+    },
     // quizzes (imperative fetch — quiz data is lesson-scoped, not a global collection)
     getQuiz: async (lessonId, mode) => {
       const res = await fetch(`/api/quizzes?lessonId=${lessonId}${mode ? `&mode=${mode}` : ''}`);
