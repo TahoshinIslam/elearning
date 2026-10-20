@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
-import { errResponse } from '@/lib/repo';
-import { getCourseProgress } from '@/lib/videoRepo';
+import { errResponse, HttpError } from '@/lib/repo';
+import { getCourseContext } from '@/lib/access';
+import { getLearnerCourse } from '@/lib/learningRepo';
 
 export const dynamic = 'force-dynamic';
 
-// Powers the learning player's "resume" behavior and curriculum sidebar
-// progress — every video lesson in the course plus this student's saved
-// position on each, and which lesson to land on.
+// Kept for existing links/clients: resolves the course by id and returns the
+// same learner outline as GET /api/learn/[slug] (with resumeLessonId).
 export async function GET(request, { params }) {
   try {
     const session = requireUser();
-    const result = await getCourseProgress(session, Number(params.id));
-    return NextResponse.json(result);
+    const course = await getCourseContext(Number(params.id));
+    if (!course) throw new HttpError(404, { error: 'course_not_found' });
+    return NextResponse.json(await getLearnerCourse(session, course.slug));
   } catch (e) { return errResponse(e); }
 }

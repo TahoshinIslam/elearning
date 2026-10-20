@@ -1,29 +1,37 @@
 import { NextResponse } from 'next/server';
-import { currentSession, requireRole } from '@/lib/auth';
+import { currentSession, requireUser } from '@/lib/auth';
 import { errResponse } from '@/lib/repo';
-import { getPlaybackInfo, confirmUpload } from '@/lib/videoRepo';
+import { getPlaybackInfo, confirmUpload, removeVideo } from '@/lib/videoRepo';
+import { rateLimit, clientIp, LIMITS } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
-// A free-preview lesson must be watchable by a guest, so this deliberately
-// does NOT require a session — but getPlaybackInfo() still re-derives
-// entitlement itself (free lesson, staff, or a real enrollment) before ever
-// returning a signed URL. This is the server-side check the audit asked for.
+// Playback authorization. Deliberately callable without a session — a
+// public preview lesson must play for a visitor — but getPlaybackInfo()
+// (lib/access.js) re-derives entitlement on every call: preview only for
+// is_free lessons of published courses, otherwise an active enrollment or
+// course-manager role. The returned URL is short-lived and signed.
 export async function GET(request, { params }) {
   try {
     const session = currentSession();
-    const info = await getPlaybackInfo(session, Number(params.id));
-    return NextResponse.json(info);
+    rateLimit(`playback:${session?.id || clientIp()}`, LIMITS.playback);
+    return NextResponse.json(await getPlaybackInfo(session, Number(params.id)));
   } catch (e) { return errResponse(e); }
 }
 
-// Instructor/owner confirms an upload completed (after PUTting the file
-// straight to storage via the presigned URL from /upload-url).
+// Course manager confirms an upload finished (after PUTting the file to the
+// signed upload URL from /upload-url). The object's existence is verified.
 export async function POST(request, { params }) {
   try {
-    requireRole('owner', 'superadmin');
+    const session = requireUser();
     const body = await request.json();
-    const result = await confirmUpload({ lessonId: Number(params.id), key: body.key, durationSeconds: body.durationSeconds });
-    return NextResponse.json(result);
+    return NextResponse.json(await confirmUpload(session, Number(params.id), body));
+  } catch (e) { return errResponse(e); }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const session = requireUser();
+    return NextResponse.json(await removeVideo(session, Number(params.id)));
   } catch (e) { return errResponse(e); }
 }

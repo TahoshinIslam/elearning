@@ -123,11 +123,11 @@ export default function BatchesTab() {
               <div style={{ display: 'flex', gap: 20, marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--line)' }}>
                 <div>
                   <div style={{ fontSize: 11.5, color: 'var(--faint)', fontWeight: 600 }}>{t.students}</div>
-                  <div className="display" style={{ fontWeight: 800, fontSize: 18 }}>{b.students}</div>
+                  <div className="display" style={{ fontWeight: 700, fontSize: 18 }}>{b.students}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: 11.5, color: 'var(--faint)', fontWeight: 600 }}>{t.courseFee}</div>
-                  <div className="display" style={{ fontWeight: 800, fontSize: 18 }}>৳{b.fee}</div>
+                  <div className="display" style={{ fontWeight: 700, fontSize: 18 }}>৳{b.fee}</div>
                 </div>
               </div>
             </div>

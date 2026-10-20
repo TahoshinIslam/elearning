@@ -6,3 +6,8 @@ out
 .DS_Store
 npm-debug.log*
 devserver.log
+
+# local private object storage (STORAGE_PROVIDER=local)
+/storage/
+.next-local
+.next-build

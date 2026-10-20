@@ -4,26 +4,23 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-// bKash redirects the customer's browser here after they complete, cancel,
-// or fail the payment on bKash's hosted page, with ?paymentID=&status=.
-// Those query params are client-controlled (the browser round-tripped
-// through bKash, but a request to this URL could in principle be forged) —
-// so "status=success" here is only ever a hint to go check. The actual
-// verification is finalizeBkashCallback() calling bKash's own server back
-// via executePayment(); nothing is marked paid without that.
+// bKash redirects the customer's browser here with ?paymentID=&status=.
+// Those params are client-controlled, so "success" is only a prompt to
+// verify: finalizeBkashCallback() asks bKash's server (execute → status
+// query fallback) and only then grants access. The result page re-reads
+// the order from the server; nothing in its URL is trusted.
 export async function GET(request) {
   const paymentID = request.nextUrl.searchParams.get('paymentID');
   const status = request.nextUrl.searchParams.get('status');
-  const resultUrl = new URL('/checkout/result', request.url);
+  const base = process.env.APP_BASE_URL ? process.env.APP_BASE_URL.replace(/\/$/, '') : request.nextUrl.origin;
+  const resultUrl = new URL('/checkout/result', base);
 
   try {
     const { order } = await finalizeBkashCallback({ paymentID, status });
     resultUrl.searchParams.set('order', String(order.id));
-    resultUrl.searchParams.set('status', order.status);
   } catch (e) {
-    logger.error('bkash_callback_failed', { paymentID, status, message: e?.message });
-    resultUrl.searchParams.set('status', 'error');
+    logger.error('bkash_callback_failed', { status, message: e?.message });
+    resultUrl.searchParams.set('error', 'verification');
   }
-
-  return NextResponse.redirect(resultUrl);
+  return NextResponse.redirect(resultUrl, { status: 303 });
 }

@@ -3,16 +3,19 @@ import { errResponse, HttpError } from '@/lib/repo';
 import { findUserByEmail } from '@/lib/authRepo';
 import { verifyPassword, sessionFromUser, setSessionCookie } from '@/lib/auth';
 import { recordAudit } from '@/lib/auditLog';
+import { rateLimit, clientIp, LIMITS } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
     const { email, password } = await request.json();
+    rateLimit(`login:ip:${clientIp()}`, LIMITS.login);
+    rateLimit(`login:email:${String(email || '').trim().toLowerCase()}`, LIMITS.login);
     const user = await findUserByEmail(email);
     // Same error whether the email is unknown or the password is wrong.
     if (!user || !verifyPassword(password, user.password_hash)) {
-      await recordAudit({ action: 'login_failed', targetType: 'user', targetId: user?.id, detail: `email=${email}` });
+      await recordAudit({ action: 'login_failed', targetType: 'user', targetId: user?.id, detail: `email=${String(email || '').slice(0, 120)}` });
       throw new HttpError(401, { error: 'invalid_credentials' });
     }
     if (user.status === 'disabled') {

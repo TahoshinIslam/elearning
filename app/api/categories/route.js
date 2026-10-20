@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { errResponse } from '@/lib/repo';
-import { getCategories, createCategory, deleteCategory } from '@/lib/categoryRepo';
+import { getCategories, createCategory, updateCategory, deleteCategory } from '@/lib/categoryRepo';
 import { requireRole } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +11,10 @@ export async function GET() {
 }
 export async function POST(request) {
   try { requireRole('owner', 'superadmin'); return NextResponse.json(await createCategory(await request.json()), { status: 201 }); }
+  catch (e) { return errResponse(e); }
+}
+export async function PATCH(request) {
+  try { requireRole('owner', 'superadmin'); return NextResponse.json(await updateCategory(await request.json())); }
   catch (e) { return errResponse(e); }
 }
 export async function DELETE(request) {

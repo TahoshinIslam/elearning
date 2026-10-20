@@ -57,7 +57,9 @@ export const api = createApi({
     }),
 
     // ---------- courses (Course → Module → Lesson) ----------
-    getCourses: build.query({ query: () => '/courses', providesTags: ['Courses'] }),
+    // Staff get the full editable list (an array); everyone else gets the
+    // public catalog shape { items } — normalised to an array here.
+    getCourses: build.query({ query: () => '/courses?all=1', transformResponse: (res) => (Array.isArray(res) ? res : res?.items || []), providesTags: ['Courses'] }),
     addCourse: build.mutation({
       query: (body) => ({ url: '/courses', method: 'POST', body: body || {} }),
       invalidatesTags: ['Courses']

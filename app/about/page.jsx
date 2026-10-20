@@ -1,10 +1,12 @@
-'use client';
-
-import { useApp } from '@/context/AppContext';
+import { getLang } from '@/lib/lang';
+import { getSettings } from '@/lib/settingsRepo';
 import LegalPage from '@/components/LegalPage';
 
-export default function AboutPage() {
-  const { lang, centerDisplay } = useApp();
+export const metadata = { title: 'About' };
+
+export default async function AboutPage() {
+  const lang = getLang();
+  const centerDisplay = (await getSettings().catch(() => ({}))).siteTitle || 'Leo Learning';
   const bn = lang === 'bn';
 
   return (

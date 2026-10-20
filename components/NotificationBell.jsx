@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import Icon from '@/components/Icon';
+import { usePresence } from '@/components/ui/motion';
 
 const KIND_ICON = { announcement: 'megaphone', grade: 'edit', class: 'video', payment: 'card', system: 'bell' };
 
@@ -32,6 +33,7 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
+  const panel = usePresence(open, 120);
   if (!auth) return null;
   const unread = items.filter((n) => !n.isRead).length;
 
@@ -41,18 +43,17 @@ export default function NotificationBell() {
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <button onClick={openPanel} aria-label={t.notifications}
-        style={{ position: 'relative', border: '1.5px solid var(--line)', background: '#fff', color: 'var(--ink)', borderRadius: 99, width: 36, height: 36, cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
+      <button type="button" onClick={openPanel} aria-label={t.notifications} aria-expanded={open} className="btn btn-ghost btn-icon" style={{ position: 'relative', borderRadius: 99 }}>
         <Icon name="bell" size={18} />
         {unread > 0 && (
-          <span style={{ position: 'absolute', top: -5, right: -5, background: 'var(--brand)', color: '#fff', borderRadius: 99, minWidth: 17, height: 17, fontSize: 10.5, fontWeight: 800, display: 'grid', placeItems: 'center', padding: '0 4px' }}>
+          <span style={{ position: 'absolute', top: -5, right: -5, background: 'var(--brand)', color: '#fff', borderRadius: 99, minWidth: 17, height: 17, fontSize: 10.5, fontWeight: 700, display: 'grid', placeItems: 'center', padding: '0 4px' }}>
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
-      {open && (
-        <div className="anim-in notif-dropdown" style={{
+      {panel.mounted && (
+        <div className="notif-dropdown" data-state={panel.state} onAnimationEnd={panel.onAnimationEnd} {...(panel.state === 'closing' ? { inert: '' } : {})} style={{
           background: 'var(--paper, #fff)', color: 'var(--ink, #1a1a1a)', borderRadius: 12,
           boxShadow: '0 12px 40px rgba(0,0,0,.28)', border: '1px solid var(--line)', zIndex: 90
         }}>

@@ -19,8 +19,8 @@ beforeAll(async () => {
   emptyCourseId = empty.insertId;
 
   const real = await q(
-    `INSERT INTO courses (title, slug, published, price, old_price, rating, rating_count, language, description)
-     VALUES (?,?,0,750,0,0,0,'English','A real, complete course description.')`,
+    `INSERT INTO courses (title, slug, published, price, old_price, rating, rating_count, language, level, description)
+     VALUES (?,?,0,750,0,0,0,'English','Beginner','A real, complete course description.')`,
     [`Phase 6 Real Course ${RUN_ID}`, `phase6-real-${RUN_ID}`]
   );
   realCourseId = real.insertId;
@@ -28,12 +28,14 @@ beforeAll(async () => {
   moduleId = mod.insertId;
   const lesson = await q("INSERT INTO lessons (module_id, title, type, is_free, position) VALUES (?,?,'video',1,0)", [moduleId, 'Lesson 1']);
   lessonId = lesson.insertId;
+  await q("INSERT INTO video_assets (lesson_id, provider, storage_key, duration_seconds, status) VALUES (?,'local',?,60,'ready')", [lessonId, `videos/${realCourseId}/${lessonId}/x.mp4`]);
 
   const user = await createUser({ name: 'Phase 6 Buyer', email: `phase6-test-${RUN_ID}@example.test`, password: 'testpass123' });
   userId = user.id; studentId = user.student_id;
 });
 
 afterAll(async () => {
+  await q("DELETE FROM audit_log WHERE target_type = 'course' AND target_id IN (?, ?)", [String(emptyCourseId), String(realCourseId)]);
   if (orderId) { await q('DELETE FROM order_items WHERE order_id = ?', [orderId]); await q('DELETE FROM orders WHERE id = ?', [orderId]); }
   await q('DELETE FROM lesson_progress WHERE student_id = ?', [studentId]);
   await q('DELETE FROM enrollments WHERE student_id = ?', [studentId]);
@@ -63,15 +65,18 @@ describe('publish validation', () => {
 });
 
 describe('draft → pending_review → published workflow', () => {
+  const ownerSession = { role: 'owner' };
+  const superadminSession = { role: 'superadmin' };
+
   it('moves through the whole workflow with a rejection round-trip', async () => {
-    await submitForReview(realCourseId);
+    await submitForReview(ownerSession, realCourseId);
     let [row] = await q('SELECT review_status FROM courses WHERE id = ?', [realCourseId]);
     expect(row.review_status).toBe('pending_review');
 
     const queue = await getPendingReviews();
     expect(queue.some((c) => c.id === realCourseId)).toBe(true);
 
-    await rejectReview(realCourseId, 'Needs a better thumbnail');
+    await rejectReview(superadminSession, realCourseId, 'Needs a better thumbnail');
     [row] = await q('SELECT published, review_status, review_note FROM courses WHERE id = ?', [realCourseId]);
     expect(row.published).toBe(0);
     expect(row.review_status).toBe('draft');
@@ -80,8 +85,8 @@ describe('draft → pending_review → published workflow', () => {
     const queueAfterReject = await getPendingReviews();
     expect(queueAfterReject.some((c) => c.id === realCourseId)).toBe(false);
 
-    await submitForReview(realCourseId);
-    await approveReview(realCourseId);
+    await submitForReview(ownerSession, realCourseId);
+    await approveReview(superadminSession, realCourseId);
     [row] = await q('SELECT published, review_status, review_note FROM courses WHERE id = ?', [realCourseId]);
     expect(row.published).toBe(1);
     expect(row.review_status).toBe('published');
@@ -89,7 +94,7 @@ describe('draft → pending_review → published workflow', () => {
   });
 
   it('refuses to submit an incomplete course for review', async () => {
-    await expect(submitForReview(emptyCourseId)).rejects.toMatchObject({ status: 400, body: { error: 'incomplete_course' } });
+    await expect(submitForReview(ownerSession, emptyCourseId)).rejects.toMatchObject({ status: 400, body: { error: 'incomplete_course' } });
   });
 });
 

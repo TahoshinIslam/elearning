@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { errResponse, HttpError } from '@/lib/repo';
 import { getQuizForStudent, getQuizForEdit, saveQuiz } from '@/lib/quizRepo';
 import { requireUser, requireStaffSection } from '@/lib/auth';
+import { assertLessonAccess } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,7 @@ export async function GET(request) {
       return NextResponse.json(await getQuizForEdit(lessonId));
     }
     const session = requireUser();
+    await assertLessonAccess(session, lessonId);
     return NextResponse.json(await getQuizForStudent(lessonId, session.studentId || 0));
   } catch (e) { return errResponse(e); }
 }

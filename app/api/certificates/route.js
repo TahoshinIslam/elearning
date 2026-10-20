@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/auth';
+import { requireUser, scopeToCaller } from '@/lib/auth';
 import { getCertificates, issueCertificate, errResponse, HttpError } from '@/lib/repo';
 
 export const dynamic = 'force-dynamic';
 
+// Own certificates for a student; staff see all. Public verification is
+// /api/certificates/verify/[certNo].
 export async function GET(request) {
-  try { return NextResponse.json(await getCertificates(request.nextUrl.searchParams)); } catch (e) { return errResponse(e); }
+  try { const { sp } = scopeToCaller(request.nextUrl.searchParams); return NextResponse.json(await getCertificates(sp)); } catch (e) { return errResponse(e); }
 }
 export async function POST(request) {
   try {

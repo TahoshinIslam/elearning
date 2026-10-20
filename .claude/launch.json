@@ -4,8 +4,12 @@
     {
       "name": "leo-learning",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeArgs": [
+        "run",
+        "dev:local"
+      ],
+      "port": 3200,
+      "autoPort": true
     }
   ]
 }

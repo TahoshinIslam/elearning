@@ -143,7 +143,7 @@ export default function TeacherQuizzes() {
           {questions.map((qq, qi) => (
             <div key={qi} className="card" style={{ padding: 18, marginBottom: 12 }}>
               <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-                <div style={{ fontWeight: 800, color: 'var(--brand)', paddingTop: 8 }}>{qi + 1}.</div>
+                <div style={{ fontWeight: 700, color: 'var(--brand)', paddingTop: 8 }}>{qi + 1}.</div>
                 <input value={qq.question} placeholder={t.quizQuestionPh} onChange={(e) => setQ(qi, { question: e.target.value })} style={fieldStyle} />
                 <button onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== qi))}
                   style={{ border: '1.5px solid var(--line)', background: '#fff', borderRadius: 8, padding: '0 12px', color: 'var(--danger,#c92a2a)', cursor: 'pointer' }}>✕</button>

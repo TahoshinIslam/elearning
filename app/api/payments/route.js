@@ -23,6 +23,8 @@ export async function POST(request) {
   } catch (e) { return errResponse(e); }
 }
 export async function PATCH(request) {
-  try { requireRole('owner', 'superadmin'); return NextResponse.json(await refundPayment(await request.json())); }
-  catch (e) { return errResponse(e); }
+  try {
+    const session = requireRole('owner', 'superadmin');
+    return NextResponse.json(await refundPayment(session, await request.json()));
+  } catch (e) { return errResponse(e); }
 }

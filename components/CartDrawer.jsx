@@ -1,102 +1,57 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Icon from '@/components/Icon';
+import Drawer from '@/components/ui/Drawer';
+import CourseCover from '@/components/ui/CourseCover';
+import { copy, taka } from '@/lib/copy';
 
-// Right-side slide-in shopping cart (e-commerce style). Driven by cart state in
-// AppContext; opens whenever a course is added or the navbar cart button is clicked.
+// The cart holds course ids for convenience only (localStorage). Prices
+// shown here are indicative; checkout re-prices everything on the server
+// and drops anything already owned or no longer available.
 export default function CartDrawer() {
-  const { t, cart, cartOpen, setCartOpen, removeFromCart, clearCart, cartTotal, auth, api, showToast } = useApp();
+  const { lang, cart, cartOpen, setCartOpen, removeFromCart, cartTotal } = useApp();
+  const c = copy(lang);
   const router = useRouter();
-
-  const fmt = (n) => (n === 0 ? t.cdFree : `৳${Number(n).toLocaleString('en-IN')}`);
-
-  const checkout = async () => {
-    if (!cart.length) return;
-    // guests must sign in first; return to the courses page afterwards
-    if (auth?.role !== 'student') {
-      setCartOpen(false);
-      showToast(t.cartLoginFirst, 'info');
-      router.push('/login?returnTo=/courses');
-      return;
-    }
-    // Server computes the authoritative total for every item and either
-    // enrolls immediately (a free cart) or hands back a bKash redirect.
-    try {
-      const result = await api.createOrder({ items: cart.map((item) => ({ courseId: item.id })) });
-      clearCart();
-      setCartOpen(false);
-      if (result.paid) {
-        showToast(t.cartOrderPlaced, 'success');
-        router.push('/student');
-      } else if (result.bkashURL) {
-        window.location.href = result.bkashURL;
-      }
-    } catch {
-      showToast(t.errGeneric, 'error');
-    }
+  const goCheckout = () => {
+    setCartOpen(false);
+    router.push(`/checkout?courses=${cart.map((i) => i.id).join(',')}`);
   };
-
   return (
-    <>
-      {cartOpen && <div onClick={() => setCartOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(20,16,12,.45)', zIndex: 95 }} />}
-      <aside
-        aria-hidden={!cartOpen}
-        style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 96,
-          width: 380, maxWidth: '90vw', background: '#fff',
-          boxShadow: cartOpen ? 'var(--shadow-pop)' : 'none',
-          transform: cartOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform .26s ease',
-          display: 'flex', flexDirection: 'column'
-        }}
-      >
-        {/* header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 18px', borderBottom: '1.5px solid var(--line)' }}>
-          <Icon name="cart" size={19} />
-          <div style={{ fontWeight: 800, fontSize: 16, flex: 1 }}>{t.cartTitle} {cart.length > 0 && <span style={{ color: 'var(--faint)', fontWeight: 600 }}>({cart.length})</span>}</div>
-          <button onClick={() => setCartOpen(false)} aria-label={t.cartClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'grid', placeItems: 'center', padding: 4 }}>
-            <Icon name="x" size={20} />
-          </button>
+    <Drawer
+      open={cartOpen}
+      onClose={() => setCartOpen(false)}
+      title={`${c.cart}${cart.length ? ` (${cart.length})` : ''}`}
+      closeLabel={c.close}
+      footer={cart.length ? (
+        <div className="stack" style={{ '--gap': '12px' }}>
+          <div className="summary-line"><span className="muted">{c.subtotal}</span><span className="strong tabular">{cartTotal ? taka(lang, cartTotal) : c.free}</span></div>
+          <button type="button" className="btn btn-primary btn-lg btn-block" onClick={goCheckout}>{c.checkoutTitle}<Icon name="arrowRight" size={18} /></button>
         </div>
-
-        {/* items */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: cart.length ? '10px 12px' : 0 }}>
-          {cart.length === 0 ? (
-            <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--muted)' }}>
-              <div style={{ color: 'var(--line)', marginBottom: 12, display: 'flex', justifyContent: 'center' }}><Icon name="cart" size={44} stroke={1.5} /></div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>{t.cartEmpty}</div>
-              <div style={{ fontSize: 13, marginTop: 4 }}>{t.cartEmptyHint}</div>
-              <button onClick={() => { setCartOpen(false); router.push('/courses'); }} className="btn-primary" style={{ marginTop: 18, borderRadius: 10 }}>{t.cartBrowse}</button>
-            </div>
-          ) : cart.map((item) => (
-            <div key={item.id} className="card" style={{ display: 'flex', gap: 12, padding: 12, marginBottom: 10, alignItems: 'center' }}>
-              <div className="placeholder-art" style={{ width: 64, height: 48, flex: 'none', borderRadius: 8, fontSize: 9 }}>{item.thumb || 'course'}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.35 }}>{item.title}</div>
-                {item.instructor && <div style={{ fontSize: 12, color: 'var(--faint)' }}>{item.instructor}</div>}
-                <div className="display" style={{ fontSize: 15, marginTop: 3 }}>{fmt(item.price)}</div>
+      ) : null}
+    >
+      {!cart.length ? (
+        <div className="state">
+          <div className="state-icon"><Icon name="cart" size={24} /></div>
+          <p>{lang === 'en' ? 'Your cart is empty.' : 'কার্ট খালি।'}</p>
+          <Link href="/courses" className="btn btn-secondary" onClick={() => setCartOpen(false)}>{c.browseCourses}</Link>
+        </div>
+      ) : (
+        <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0, '--gap': '12px' }}>
+          {cart.map((item) => (
+            <li key={item.id} className="row" style={{ alignItems: 'flex-start' }}>
+              <div style={{ width: 88, flex: 'none' }}><CourseCover id={item.id} title={item.title} size="sm" /></div>
+              <div className="grow">
+                <Link href={`/course/${item.slug}`} className="strong clamp-2" style={{ fontSize: 14.5, lineHeight: 1.35 }} onClick={() => setCartOpen(false)}>{item.title}</Link>
+                <div className="small muted tabular" style={{ marginTop: 2 }}>{item.price ? taka(lang, item.price) : c.free}</div>
               </div>
-              <button onClick={() => removeFromCart(item.id)} aria-label={t.cartRemove} style={{ border: '1.5px solid var(--line)', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#B91C1C', padding: 7, display: 'grid', placeItems: 'center' }}>
-                <Icon name="trash" size={15} />
-              </button>
-            </div>
+              <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => removeFromCart(item.id)} aria-label={`${c.removeItem}: ${item.title}`}><Icon name="trash" size={16} /></button>
+            </li>
           ))}
-        </div>
-
-        {/* footer / checkout */}
-        {cart.length > 0 && (
-          <div style={{ borderTop: '1.5px solid var(--line)', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--muted)' }}>{t.cartSubtotal}</span>
-              <span className="display" style={{ fontSize: 22 }}>{fmt(cartTotal)}</span>
-            </div>
-            <button onClick={checkout} className="btn btn-primary-lg" style={{ borderRadius: 12 }}>{t.cartCheckout} →</button>
-            <button onClick={clearCart} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--muted)', fontSize: 12.5, fontWeight: 600 }}>{t.cartClear}</button>
-          </div>
-        )}
-      </aside>
-    </>
+        </ul>
+      )}
+    </Drawer>
   );
 }

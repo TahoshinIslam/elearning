@@ -17,10 +17,10 @@ export default function ReferralTab() {
       <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{t.referralTitle}</div>
       <div style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 20 }}>{t.referralSub}</div>
 
-      <div className="panel" style={{ padding: 24, maxWidth: 520, marginBottom: 20 }}>
+      <div className="panel" style={{ padding: 24, marginBottom: 20 }}>
         <label className="label">{t.referralYourCode}</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <input className="input mono" readOnly value={data.code} style={{ fontWeight: 700, letterSpacing: '.08em' }} />
+          <input className="input mono" readOnly value={data.code} style={{ fontWeight: 700 }} />
           <button className="btn-primary" style={{ borderRadius: 10 }} onClick={() => copy(data.code)}>{t.referralCopy}</button>
         </div>
         <label className="label">{t.referralLink}</label>
@@ -30,7 +30,7 @@ export default function ReferralTab() {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 20, maxWidth: 520 }}>
+      <div className="card" style={{ padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12 }}>
           <div className="display" style={{ fontSize: 34, color: 'var(--brand)' }}>{data.count}</div>
           <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--muted)' }}>{t.referralCount}</div>

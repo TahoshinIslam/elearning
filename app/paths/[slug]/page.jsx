@@ -41,10 +41,10 @@ export default function PathDetailPage() {
               <div style={{ display: 'grid', gap: 14 }}>
                 {path.courses.map((c, i) => (
                   <Link key={c.id} href={`/course/${c.slug}`} className="card" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 18px', textDecoration: 'none', color: 'inherit' }}>
-                    <div style={{ width: 34, height: 34, flex: 'none', borderRadius: 99, background: 'var(--brand-wash)', color: 'var(--brand-deep)', display: 'grid', placeItems: 'center', fontWeight: 800 }}>{i + 1}</div>
+                    <div style={{ width: 34, height: 34, flex: 'none', borderRadius: 99, background: 'var(--brand-wash)', color: 'var(--brand-deep)', display: 'grid', placeItems: 'center', fontWeight: 700 }}>{i + 1}</div>
                     <div className="placeholder-art" style={{ width: 90, height: 54, flex: 'none', fontSize: 10, borderRadius: 8 }}>{c.thumb}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.05em', color: 'var(--faint)' }}>{t.pathStep} {i + 1}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--faint)' }}>{t.pathStep} {i + 1}</div>
                       <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.35 }}>{c.title}</div>
                       <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{c.instructor}</div>
                     </div>

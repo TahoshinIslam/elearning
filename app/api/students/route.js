@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/auth';
+import { requireRole, requireStaffSection } from '@/lib/auth';
 import { getStudents, addStudentOrImport, setStudentPaid, errResponse } from '@/lib/repo';
+import { getStudentDirectory } from '@/lib/studentAdminRepo';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try { return NextResponse.json(await getStudents()); } catch (e) { return errResponse(e); }
+// Student roster (names, phones, fee status) — staff with the 'students'
+// section only. This used to be readable by anyone, signed in or not.
+export async function GET(request) {
+  try {
+    requireStaffSection('students');
+    if (request.nextUrl.searchParams.get('view') === 'directory') return NextResponse.json(await getStudentDirectory());
+    return NextResponse.json(await getStudents());
+  } catch (e) { return errResponse(e); }
 }
 export async function POST(request) {
   try { requireRole('owner','superadmin'); return NextResponse.json(await addStudentOrImport(await request.json()), { status: 201 }); } catch (e) { return errResponse(e); }

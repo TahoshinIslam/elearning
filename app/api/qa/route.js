@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { errResponse, HttpError } from '@/lib/repo';
 import { getThread, askQuestion } from '@/lib/qaRepo';
-import { requireUser } from '@/lib/auth';
+import { requireUser, currentSession } from '@/lib/auth';
+import { assertLessonAccess } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,9 @@ export async function GET(request) {
   try {
     const lessonId = Number(request.nextUrl.searchParams.get('lessonId'));
     if (!lessonId) throw new HttpError(400, { error: 'lessonId_required' });
+    // Same rule as the lesson content: preview lessons are public, the rest
+    // need enrollment (or course-manager access).
+    await assertLessonAccess(currentSession(), lessonId);
     return NextResponse.json(await getThread(lessonId));
   } catch (e) { return errResponse(e); }
 }
@@ -18,6 +22,8 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const session = requireUser();
-    return NextResponse.json(await askQuestion(session, await request.json()), { status: 201 });
+    const body = await request.json();
+    await assertLessonAccess(session, body.lessonId);
+    return NextResponse.json(await askQuestion(session, body), { status: 201 });
   } catch (e) { return errResponse(e); }
 }
