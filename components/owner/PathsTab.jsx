@@ -68,7 +68,7 @@ export default function PathsTab() {
                   <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
                     {p.courses.map((c, i) => (
                       <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5 }}>
-                        <span style={{ width: 20, color: 'var(--brand-deep)', fontWeight: 800 }}>{i + 1}.</span>
+                        <span style={{ width: 20, color: 'var(--brand-deep)', fontWeight: 700 }}>{i + 1}.</span>
                         <span style={{ flex: 1 }}>{c.title}</span>
                         <button onClick={() => removeCourse(p.id, c.id)} className="btn-ghost-sm" aria-label="remove">✕</button>
                       </div>

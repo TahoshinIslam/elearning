@@ -1,10 +1,10 @@
-'use client';
-
-import { useApp } from '@/context/AppContext';
+import { getLang } from '@/lib/lang';
 import LegalPage from '@/components/LegalPage';
 
+export const metadata = { title: 'Privacy policy' };
+
 export default function PrivacyPage() {
-  const { lang } = useApp();
+  const lang = getLang();
   const bn = lang === 'bn';
 
   return (

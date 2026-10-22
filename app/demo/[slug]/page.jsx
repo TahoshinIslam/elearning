@@ -72,7 +72,7 @@ export default function DemoClassPage() {
                 <button
                   onClick={register}
                   disabled={busy || dc.registered}
-                  style={{ border: 'none', background: dc.registered ? 'rgba(255,255,255,.18)' : 'var(--brand)', color: '#fff', borderRadius: 12, padding: '14px 26px', fontSize: 15, fontWeight: 800, fontFamily: 'inherit', cursor: dc.registered ? 'default' : 'pointer' }}
+                  style={{ border: 'none', background: dc.registered ? 'rgba(255,255,255,.18)' : 'var(--brand)', color: '#fff', borderRadius: 12, padding: '14px 26px', fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: dc.registered ? 'default' : 'pointer' }}
                 >
                   {dc.registered ? t.dcRegistered : `${t.dcRegister} →`}
                 </button>

@@ -46,21 +46,24 @@ afterAll(async () => {
 });
 
 describe('My Learning aggregation', () => {
-  it('reports null completion (not a fake 0% or 72%) for a course with no video lessons', async () => {
+  it('reports null completion (not a fake 0% or 72%) for a course with nothing to measure yet', async () => {
     const learning = await getMyLearning({ studentId });
-    const noVideo = learning.find((c) => c.courseId === noVideoCourseId);
-    expect(noVideo.videoLessonCount).toBe(0);
-    expect(noVideo.completionPct).toBeNull();
+    const empty = learning.find((c) => c.courseId === noVideoCourseId);
+    expect(empty.lessonCount).toBe(0);
+    expect(empty.completionPct).toBeNull();
+    expect(empty.status).toBe('empty');
   });
 
-  it('computes real completion % from actual watched lessons', async () => {
-    await q("INSERT INTO lesson_progress (student_id, lesson_id, watched_seconds, duration_seconds, completed, completed_at) VALUES (?,?,100,100,1,NOW())", [studentId, lessonA]);
+  it('computes real completion % from unique completed lessons and resumes at the next unfinished one', async () => {
+    await q("INSERT INTO lesson_progress (student_id, lesson_id, covered_seconds, duration_seconds, completed, completed_at, completion_source) VALUES (?,?,100,100,1,NOW(),'watch')", [studentId, lessonA]);
+    await q('UPDATE enrollments SET last_lesson_id = ? WHERE student_id = ? AND course_id = ?', [lessonA, studentId, videoCourseId]);
     const learning = await getMyLearning({ studentId });
     const withVideo = learning.find((c) => c.courseId === videoCourseId);
-    expect(withVideo.videoLessonCount).toBe(2);
-    expect(withVideo.videoCompletedCount).toBe(1);
+    expect(withVideo.lessonCount).toBe(2);
+    expect(withVideo.completedCount).toBe(1);
     expect(withVideo.completionPct).toBe(50);
-    expect(withVideo.resumeLessonId).toBe(lessonA); // most recently touched
+    expect(withVideo.status).toBe('in_progress');
+    expect(withVideo.resumeLessonId).toBe(lessonB); // A is done → continue with B
     expect(withVideo.certified).toBe(false);
   });
 
@@ -73,5 +76,11 @@ describe('My Learning aggregation', () => {
     const withVideo = learning.find((c) => c.courseId === videoCourseId);
     expect(withVideo.certified).toBe(true);
     expect(withVideo.certNo).toBe(`LEO-TEST-${RUN_ID}`);
+  });
+
+  it('excludes refunded (cancelled) enrollments', async () => {
+    await q("UPDATE enrollments SET status = 'cancelled' WHERE student_id = ? AND course_id = ?", [studentId, noVideoCourseId]);
+    const learning = await getMyLearning({ studentId });
+    expect(learning.find((c) => c.courseId === noVideoCourseId)).toBeUndefined();
   });
 });

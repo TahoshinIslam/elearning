@@ -1,15 +1,30 @@
 import { NextResponse } from 'next/server';
-import { requireUser, requireStaffSection } from '@/lib/auth';
+import { requireUser, requireStaffSection, scopeToCaller } from '@/lib/auth';
+import { HttpError } from '@/lib/repo';
+import { assertLessonAccess } from '@/lib/access';
+import { markLessonDone } from '@/lib/videoRepo';
 import { getSubmissions, submitAssignment, gradeSubmission, errResponse } from '@/lib/repo';
 import { notifyStudent } from '@/lib/notifRepo';
 
 export const dynamic = 'force-dynamic';
 
+// Own submissions for a student; staff need the 'submissions' section.
 export async function GET(request) {
-  try { return NextResponse.json(await getSubmissions(request.nextUrl.searchParams)); } catch (e) { return errResponse(e); }
+  try { const { sp } = scopeToCaller(request.nextUrl.searchParams, 'submissions'); return NextResponse.json(await getSubmissions(sp)); } catch (e) { return errResponse(e); }
 }
+// A student submits only as themselves, only for an assignment lesson of a
+// course they're actively enrolled in.
 export async function POST(request) {
-  try { requireUser(); return NextResponse.json(await submitAssignment(await request.json()), { status: 201 }); } catch (e) { return errResponse(e); }
+  try {
+    const session = requireUser();
+    if (!session.studentId) throw new HttpError(403, { error: 'not_a_student' });
+    const body = await request.json();
+    const { ctx } = await assertLessonAccess(session, body.lessonId);
+    if (ctx.type !== 'assignment') throw new HttpError(400, { error: 'not_an_assignment' });
+    const list = await submitAssignment({ ...body, lessonId: ctx.id, courseId: ctx.course_id, studentId: session.studentId, studentName: session.name });
+    await markLessonDone(session.studentId, ctx.id, 'assignment');
+    return NextResponse.json(list.filter((s) => s.studentId === session.studentId), { status: 201 });
+  } catch (e) { return errResponse(e); }
 }
 export async function PATCH(request) {
   try {

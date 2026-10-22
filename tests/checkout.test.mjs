@@ -1,159 +1,187 @@
-// Phase 3 — integration tests for the real order/payment flow.
-// bKash itself is stubbed (vi.mock) since there's no live sandbox access from
-// here — everything else (price authority, coupon math, the DB writes, and
-// critically the idempotency guard) runs against the real database, same as
-// the rest of this test suite.
+// Checkout → payment verification → enrollment, against the real database
+// and the REAL bKash adapter (routed to the in-process simulator — see
+// tests/helpers/bkashSim.mjs). Journeys covered:
+//   5. trusted test-mode payment confirmation creates exactly one enrollment
+//   6. duplicate / invalid / forged payment events never grant extra or
+//      unauthorized access; repeat submits never open a second payment
 
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { q } from '@/lib/mysql';
-import { createUser } from '@/lib/authRepo';
+import { installBkashSimulator, customer, paymentIdFrom } from './helpers/bkashSim.mjs';
+import { fixtures } from './helpers/fixtures.mjs';
+import { createOrder, finalizeBkashCallback, reconcileOrder, getOrderForViewer, getOrdersForStudent, priceCourses } from '@/lib/orderRepo';
+import { simGetPayment } from '@/lib/bkashSimulator';
 
-vi.mock('@/lib/bkash', () => ({
-  createPayment: vi.fn(),
-  executePayment: vi.fn()
-}));
-const { createPayment, executePayment } = await import('@/lib/bkash');
-const { createOrder, finalizeBkashCallback } = await import('@/lib/orderRepo');
+const fx = fixtures('checkout');
+let sim, buyer, other, paid, free, draft, couponId;
 
-const RUN_ID = Date.now();
-let studentId, session, paidCourseId, freeCourseId, couponId;
+const activeEnrollments = async (studentId, courseId) =>
+  (await q("SELECT COUNT(*) AS n FROM enrollments WHERE student_id = ? AND course_id = ? AND status = 'active'", [studentId, courseId]))[0].n;
 
 beforeAll(async () => {
-  const user = await createUser({ name: 'Checkout Tester', email: `phase3-test-${RUN_ID}@example.test`, password: 'testpass123' });
-  studentId = user.student_id;
-  session = { studentId, tenantId: null, role: 'student' };
-
-  const paid = await q(
-    `INSERT INTO courses (title, slug, published, price, old_price, rating, rating_count, language)
-     VALUES (?,?,1,1000,0,0,0,'English')`,
-    [`Phase 3 Paid Course ${RUN_ID}`, `phase3-paid-${RUN_ID}`]
-  );
-  paidCourseId = paid.insertId;
-
-  const free = await q(
-    `INSERT INTO courses (title, slug, published, price, old_price, rating, rating_count, language)
-     VALUES (?,?,1,0,0,0,0,'English')`,
-    [`Phase 3 Free Course ${RUN_ID}`, `phase3-free-${RUN_ID}`]
-  );
-  freeCourseId = free.insertId;
-
-  const coupon = await q(
-    "INSERT INTO coupons (code, type, value, is_active) VALUES (?, 'percent', 10, 1)",
-    [`P3TEST${RUN_ID}`]
-  );
-  couponId = coupon.insertId;
+  sim = installBkashSimulator();
+  buyer = await fx.student('Buyer');
+  other = await fx.student('Other');
+  paid = await fx.course({ price: 1000 });
+  free = await fx.course({ price: 0 });
+  draft = await fx.course({ price: 500, published: false });
+  const c = await q("INSERT INTO coupons (code, type, value, is_active) VALUES (?, 'percent', 10, 1)", [`T${Date.now()}`.slice(0, 20)]);
+  couponId = c.insertId;
 });
 
 afterAll(async () => {
-  await q('DELETE FROM payment_events WHERE order_id IN (SELECT id FROM orders WHERE student_id = ?)', [studentId]);
-  await q('DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE student_id = ?)', [studentId]);
-  await q('DELETE FROM orders WHERE student_id = ?', [studentId]);
-  await q('DELETE FROM enrollments WHERE student_id = ?', [studentId]);
-  if (couponId) await q('DELETE FROM coupons WHERE id = ?', [couponId]);
-  if (paidCourseId) await q('DELETE FROM courses WHERE id = ?', [paidCourseId]);
-  if (freeCourseId) await q('DELETE FROM courses WHERE id = ?', [freeCourseId]);
-  // users before students: users.student_id is ON DELETE SET NULL, so
-  // deleting the student first would orphan (not remove) the user row.
-  if (studentId) await q('DELETE FROM users WHERE student_id = ?', [studentId]);
-  if (studentId) await q('DELETE FROM students WHERE id = ?', [studentId]);
+  sim.restore();
+  await q('DELETE FROM coupons WHERE id = ?', [couponId]);
+  await fx.cleanup();
 });
 
 describe('server-authoritative pricing', () => {
-  it('ignores a client-sent amount and charges the DB price', async () => {
-    createPayment.mockResolvedValueOnce({ paymentID: `PAY-${RUN_ID}-A`, bkashURL: 'https://sandbox.bka.sh/pay/A' });
-
-    const result = await createOrder(session, { courseId: paidCourseId, amount: 1 }); // client tries to pay ৳1
-    expect(result.order.amount).toBe(1000); // the real course price, not the client's number
-    expect(result.bkashURL).toBe('https://sandbox.bka.sh/pay/A');
-
-    const [row] = await q('SELECT status, amount FROM orders WHERE id = ?', [result.order.id]);
-    expect(row.status).toBe('pending');
-    expect(row.amount).toBe(1000);
+  it('charges the database price, ignoring any client-sent amount', async () => {
+    const quote = await priceCourses(buyer.session, [paid.courseId]);
+    expect(quote).toMatchObject({ subtotal: 1000, discount: 0, amount: 1000, currency: 'BDT' });
+    const result = await createOrder(other.session, { courseId: paid.courseId, amount: 1, idempotencyKey: `idem-${fx.RUN}-a` });
+    expect(result.order.amount).toBe(1000);
+    const [item] = await q('SELECT unit_price, title_snapshot FROM order_items WHERE order_id = ?', [result.order.id]);
+    expect(item.unit_price).toBe(1000);
+    expect(item.title_snapshot).toBeTruthy();
+    expect(simGetPayment(paymentIdFrom(result.bkashURL)).amount).toBe('1000.00');
   });
 
-  it('applies a coupon server-side, never trusting a client-sent discount', async () => {
-    createPayment.mockResolvedValueOnce({ paymentID: `PAY-${RUN_ID}-B`, bkashURL: 'https://sandbox.bka.sh/pay/B' });
+  it('applies a coupon server-side and snapshots subtotal/discount', async () => {
+    const [{ code }] = await q('SELECT code FROM coupons WHERE id = ?', [couponId]);
+    const quote = await priceCourses(buyer.session, [paid.courseId], code.toLowerCase());
+    expect(quote).toMatchObject({ subtotal: 1000, discount: 100, amount: 900 });
+  });
 
-    const result = await createOrder(session, { courseId: paidCourseId, couponCode: `p3test${RUN_ID}` });
-    expect(result.order.amount).toBe(900); // 1000 - 10%
+  it('refuses unpublished courses', async () => {
+    await expect(createOrder(buyer.session, { courseId: draft.courseId })).rejects.toMatchObject({ status: 400, body: { error: 'course_not_available' } });
   });
 });
 
-describe('free orders', () => {
-  it('enrolls immediately with no gateway involved, and refuses a repeat purchase', async () => {
-    const result = await createOrder(session, { courseId: freeCourseId });
+describe('free courses', () => {
+  it('enrolls immediately with no gateway, and refuses a repeat purchase', async () => {
+    const result = await createOrder(buyer.session, { courseId: free.courseId });
     expect(result.paid).toBe(true);
-    expect(createPayment).not.toHaveBeenCalledWith(expect.objectContaining({ amount: 0 }));
-
-    const [enr] = await q('SELECT batch_id, status FROM enrollments WHERE student_id = ? AND course_id = ?', [studentId, freeCourseId]);
-    expect(enr.status).toBe('active');
-    expect(enr.batch_id).toBeNull();
-
-    await expect(createOrder(session, { courseId: freeCourseId })).rejects.toMatchObject({ status: 409 });
+    expect(await activeEnrollments(buyer.studentId, free.courseId)).toBe(1);
+    await expect(createOrder(buyer.session, { courseId: free.courseId })).rejects.toMatchObject({ status: 409, body: { error: 'already_enrolled' } });
   });
 });
 
-describe('paid checkout: bKash create → verified callback → enrollment', () => {
-  it('never enrolls before the callback verifies payment, then enrolls exactly once even if the callback fires twice', async () => {
-    const paymentID = `PAY-${RUN_ID}-C`;
-    createPayment.mockResolvedValueOnce({ paymentID, bkashURL: `https://sandbox.bka.sh/pay/${paymentID}` });
+describe('paid checkout through the bKash verification path', () => {
+  let order, paymentID;
 
-    const created = await createOrder(session, { courseId: paidCourseId });
-    expect(created.bkashURL).toBeTruthy();
-
-    // not enrolled yet — payment hasn't been verified
-    const [before] = await q('SELECT id FROM enrollments WHERE student_id = ? AND course_id = ?', [studentId, paidCourseId]);
-    expect(before).toBeUndefined();
-
-    executePayment.mockResolvedValue({
-      paymentID, trxID: `TRX-${RUN_ID}`, transactionStatus: 'Completed', amount: '1000', raw: { paymentID, trxID: `TRX-${RUN_ID}` }
-    });
-
-    const first = await finalizeBkashCallback({ paymentID, status: 'success' });
-    expect(first.order.status).toBe('paid');
-    expect(first.alreadyProcessed).toBeFalsy();
-
-    const [enrolledOnce] = await q(
-      'SELECT COUNT(*) AS c FROM enrollments WHERE student_id = ? AND course_id = ?', [studentId, paidCourseId]
-    );
-    expect(enrolledOnce.c).toBe(1);
-
-    // duplicate callback — bKash retry, or the user hitting back/forward
-    const second = await finalizeBkashCallback({ paymentID, status: 'success' });
-    expect(second.alreadyProcessed).toBe(true);
-    expect(executePayment).toHaveBeenCalledTimes(1); // never re-verified, let alone re-enrolled
-
-    const [enrolledStill] = await q(
-      'SELECT COUNT(*) AS c FROM enrollments WHERE student_id = ? AND course_id = ?', [studentId, paidCourseId]
-    );
-    expect(enrolledStill.c).toBe(1); // still exactly one row, not two
+  it('a double-click / retry returns the same order and the same bKash payment', async () => {
+    const key = `idem-${fx.RUN}-b`;
+    const first = await createOrder(buyer.session, { courseId: paid.courseId, idempotencyKey: key });
+    const again = await createOrder(buyer.session, { courseId: paid.courseId, idempotencyKey: key });
+    expect(again.order.id).toBe(first.order.id);
+    expect(again.bkashURL).toBe(first.bkashURL);
+    // a fresh submit for the identical purchase resumes the pending payment instead of opening a second one
+    const fresh = await createOrder(buyer.session, { courseId: paid.courseId, idempotencyKey: `idem-${fx.RUN}-c` });
+    expect(fresh.order.id).toBe(first.order.id);
+    expect(fresh.reused).toBe(true);
+    order = first.order;
+    paymentID = paymentIdFrom(first.bkashURL);
   });
 
-  it('fails the order instead of granting access when bKash reports a different amount than what was charged', async () => {
-    const paymentID = `PAY-${RUN_ID}-D`;
-    createPayment.mockResolvedValueOnce({ paymentID, bkashURL: `https://sandbox.bka.sh/pay/${paymentID}` });
-
-    // second paid course fixture so this doesn't collide with the enrollment created above
-    const other = await q(
-      `INSERT INTO courses (title, slug, published, price, old_price, rating, rating_count, language)
-       VALUES (?,?,1,1000,0,0,0,'English')`,
-      [`Phase 3 Mismatch Course ${RUN_ID}`, `phase3-mismatch-${RUN_ID}`]
-    );
-    const otherCourseId = other.insertId;
-
-    await createOrder(session, { courseId: otherCourseId });
-    executePayment.mockResolvedValueOnce({
-      paymentID, trxID: `TRX-MISMATCH-${RUN_ID}`, transactionStatus: 'Completed', amount: '1', raw: {}
-    });
-
+  it('a forged success callback (customer never authorized) grants nothing', async () => {
     const result = await finalizeBkashCallback({ paymentID, status: 'success' });
-    expect(result.failed).toBe(true);
+    expect(result.order.status).toBe('pending');
+    expect(await activeEnrollments(buyer.studentId, paid.courseId)).toBe(0);
+  });
 
-    const [enr] = await q('SELECT id FROM enrollments WHERE student_id = ? AND course_id = ?', [studentId, otherCourseId]);
-    expect(enr).toBeUndefined(); // never enrolled
+  it('a forged cancel does not stop the real payment from being honoured', async () => {
+    await finalizeBkashCallback({ paymentID, status: 'cancel' });
+    const [row] = await q('SELECT status FROM orders WHERE id = ?', [order.id]);
+    expect(row.status).toBe('cancelled');
+    // …the customer then genuinely pays on bKash's page:
+    const cb = customer(paymentID, 'pay');
+    const result = await finalizeBkashCallback(cb);
+    expect(result.order.status).toBe('paid');
+    expect(result.order.gatewayTrxId).toMatch(/^SIMTRX/);
+    expect(await activeEnrollments(buyer.studentId, paid.courseId)).toBe(1);
+    const [enr] = await q('SELECT order_id FROM enrollments WHERE student_id = ? AND course_id = ?', [buyer.studentId, paid.courseId]);
+    expect(enr.order_id).toBe(order.id);
+  });
 
-    await q('DELETE FROM order_items WHERE course_id = ?', [otherCourseId]);
-    await q('DELETE FROM orders WHERE student_id = ? AND amount = 1000 AND gateway_payment_id = ?', [studentId, paymentID]);
-    await q('DELETE FROM courses WHERE id = ?', [otherCourseId]);
+  it('a repeated callback is a no-op: still one enrollment, still one execute', async () => {
+    const executesBefore = sim.calls.filter((c) => c.path.endsWith('/execute')).length;
+    const again = await finalizeBkashCallback({ paymentID, status: 'success' });
+    expect(again.alreadyProcessed).toBe(true);
+    expect(sim.calls.filter((c) => c.path.endsWith('/execute')).length).toBe(executesBefore);
+    expect(await activeEnrollments(buyer.studentId, paid.courseId)).toBe(1);
+  });
+
+  it('a late failure/cancel callback never revokes a paid order', async () => {
+    await finalizeBkashCallback({ paymentID, status: 'failure' });
+    const [row] = await q('SELECT status FROM orders WHERE id = ?', [order.id]);
+    expect(row.status).toBe('paid');
+  });
+
+  it('an owner cannot buy the same course again', async () => {
+    await expect(createOrder(buyer.session, { courseId: paid.courseId })).rejects.toMatchObject({ status: 409, body: { error: 'already_enrolled' } });
+  });
+
+  it('an unknown paymentID is rejected', async () => {
+    await expect(finalizeBkashCallback({ paymentID: 'SIM-NOT-REAL', status: 'success' })).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe('amount mismatch and cancellation', () => {
+  it('fails the order instead of granting access when bKash confirms a different amount', async () => {
+    const c = await fx.course({ price: 700 });
+    const s = await fx.student('Mismatch');
+    const created = await createOrder(s.session, { courseId: c.courseId });
+    const pid = paymentIdFrom(created.bkashURL);
+    // tamper with what the "gateway" recorded
+    globalThis.__LEO_BKASH_SIM__.get(pid).amount = '7.00';
+    const result = await finalizeBkashCallback(customer(pid, 'pay'));
+    expect(result.order.status).toBe('failed');
+    expect(result.order.failureReason).toBe('amount_mismatch');
+    expect(await activeEnrollments(s.studentId, c.courseId)).toBe(0);
+  });
+
+  it('a real cancel leaves the order cancelled and the course purchasable', async () => {
+    const c = await fx.course({ price: 300 });
+    const s = await fx.student('Canceller');
+    const created = await createOrder(s.session, { courseId: c.courseId });
+    const result = await finalizeBkashCallback(customer(paymentIdFrom(created.bkashURL), 'cancel'));
+    expect(result.order.status).toBe('cancelled');
+    expect(await activeEnrollments(s.studentId, c.courseId)).toBe(0);
+    const retry = await createOrder(s.session, { courseId: c.courseId });
+    expect(retry.order.id).not.toBe(created.order.id);
+  });
+});
+
+describe('interrupted fulfilment is recovered by reconciliation', () => {
+  it('a payment whose callback never arrived is fulfilled once by reconcile, and only once', async () => {
+    const c = await fx.course({ price: 450 });
+    const s = await fx.student('Lost callback');
+    const created = await createOrder(s.session, { courseId: c.courseId });
+    const pid = paymentIdFrom(created.bkashURL);
+    // customer authorizes and bKash completes it, but our callback is lost:
+    customer(pid, 'pay');
+    globalThis.__LEO_BKASH_SIM__.get(pid).status = 'Completed';
+    globalThis.__LEO_BKASH_SIM__.get(pid).trxID = 'SIMTRX-LOST';
+
+    // another student can't reconcile (or even see) this order
+    await expect(reconcileOrder(other.session, created.order.id)).rejects.toMatchObject({ status: 404 });
+
+    const out = await reconcileOrder(s.session, created.order.id);
+    expect(out.order.status).toBe('paid');
+    const again = await reconcileOrder(s.session, created.order.id);
+    expect(again.unchanged).toBe(true);
+    expect(await activeEnrollments(s.studentId, c.courseId)).toBe(1);
+  });
+});
+
+describe('order privacy', () => {
+  it('a student reads only their own orders', async () => {
+    const mine = await getOrdersForStudent(buyer.session);
+    expect(mine.length).toBeGreaterThan(0);
+    expect(mine.every((o) => o.studentId === buyer.studentId)).toBe(true);
+    await expect(getOrderForViewer(other.session, mine[0].id)).rejects.toMatchObject({ status: 404 });
+    const own = await getOrderForViewer(buyer.session, mine[0].id);
+    expect(own.items.length).toBeGreaterThan(0);
   });
 });

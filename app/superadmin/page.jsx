@@ -5,6 +5,7 @@ import RoleGuard from '@/components/RoleGuard';
 import SiteNav from '@/components/SiteNav';
 import CareerAdmin from '@/components/superadmin/CareerAdmin';
 import CourseReviewQueue from '@/components/superadmin/CourseReviewQueue';
+import AuditLogView from '@/components/superadmin/AuditLogView';
 
 function SuperAdminPageInner() {
   const { t, lang, tenants, toggleTenant, showToast } = useApp();
@@ -18,8 +19,8 @@ function SuperAdminPageInner() {
     fontWeight: 700,
     borderRadius: 99,
     padding: '3px 11px',
-    background: p === 'Pro' ? '#ff8a3d' : p === 'Basic' ? 'rgba(255,255,255,.14)' : 'rgba(124,58,237,.35)',
-    color: p === 'Pro' ? 'var(--coal)' : '#fff'
+    background: p === 'Pro' ? 'var(--brand-tint)' : p === 'Basic' ? 'var(--surface-2)' : 'var(--info-tint)',
+    color: p === 'Pro' ? 'var(--brand-ink)' : 'var(--ink-2)'
   });
 
   const statusStyle = (st) => ({
@@ -27,8 +28,8 @@ function SuperAdminPageInner() {
     fontWeight: 700,
     borderRadius: 99,
     padding: '4px 11px',
-    background: st === 'active' ? 'rgba(14,159,110,.22)' : st === 'trial' ? 'rgba(124,58,237,.25)' : 'rgba(220,38,38,.25)',
-    color: st === 'active' ? '#4ade80' : st === 'trial' ? '#c4b5fd' : '#fca5a5'
+    background: st === 'active' ? 'var(--success-tint)' : st === 'trial' ? 'var(--info-tint)' : 'var(--danger-tint)',
+    color: st === 'active' ? '#14532D' : st === 'trial' ? '#1E3A8A' : '#7F1D1D'
   });
 
   const statusLabel = (st) => (st === 'active' ? t.active : st === 'trial' ? t.trial : t.suspended);
@@ -44,8 +45,8 @@ function SuperAdminPageInner() {
   };
 
   const statCard = (label, value, color) => (
-    <div style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 16, padding: '18px 20px' }}>
-      <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,.55)', fontWeight: 600 }}>{label}</div>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '18px 20px' }}>
+      <div style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}>{label}</div>
       <div className="display" style={{ fontSize: 34, marginTop: 4, color }}>{value}</div>
     </div>
   );
@@ -53,25 +54,24 @@ function SuperAdminPageInner() {
   return (
     <>
     <SiteNav />
-    <div className="anim-in" style={{ background: 'var(--coal)', minHeight: 'calc(100vh - 51px)', color: '#fff', padding: '30px 32px 90px' }}>
-      <div style={{ maxWidth: 1060, margin: '0 auto' }}>
+    <div className="anim-in" style={{ minHeight: 'calc(100vh - var(--header-h))', padding: '30px 20px 90px' }}>
+      <div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 22 }}>
           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>{t.superT}</h2>
-          <span style={{ fontSize: 12.5, color: 'rgba(255,255,255,.5)' }}>{t.superS}</span>
+          <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{t.superS}</span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(180px,100%),1fr))', gap: 14, marginBottom: 26 }}>
-          {statCard(t.activeCenters, activeCount, '#ff8a3d')}
+          {statCard(t.activeCenters, activeCount, 'var(--brand)')}
           {statCard('MRR', '৳' + mrrTotal.toLocaleString('en-IN'))}
           {statCard(t.trials, trialCount)}
-          {statCard(t.churn, '2.1%')}
-        </div>
+                  </div>
 
-        <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 16, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
           <div
             style={{
               display: 'grid', gridTemplateColumns: '2.2fr 1fr 1fr 1fr 1.4fr', gap: 10, padding: '12px 20px',
-              fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,.5)', borderBottom: '1px solid rgba(255,255,255,.1)'
+              fontSize: 12, fontWeight: 700, color: 'var(--muted)', borderBottom: '1px solid var(--border)'
             }}
           >
             <div>{t.thCenter}</div><div>{t.thPlan}</div><div>{t.students}</div><div>MRR</div><div>{t.thStatus}</div>
@@ -82,12 +82,12 @@ function SuperAdminPageInner() {
               key={tn.id}
               style={{
                 display: 'grid', gridTemplateColumns: '2.2fr 1fr 1fr 1fr 1.4fr', gap: 10, padding: '14px 20px',
-                borderBottom: '1px solid rgba(255,255,255,.07)', alignItems: 'center', fontSize: 14
+                borderBottom: '1px solid var(--border)', alignItems: 'center', fontSize: 14
               }}
             >
               <div>
                 <div style={{ fontWeight: 600 }}>{tn.name}</div>
-                <div className="mono" style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>{tn.sub}.leolearning.app</div>
+                <div className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>{tn.sub}.leolearning.app</div>
               </div>
               <div><span style={planStyle(tn.plan)}>{tn.plan}</span></div>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>{tn.students}</div>
@@ -97,7 +97,7 @@ function SuperAdminPageInner() {
                 <button
                   onClick={() => handleToggle(tn)}
                   style={{
-                    border: '1px solid rgba(255,255,255,.25)', background: 'none', color: 'rgba(255,255,255,.8)',
+                    border: '1px solid var(--border)', background: 'none', color: 'var(--muted)',
                     borderRadius: 8, padding: '5px 12px', fontSize: 11.5, fontWeight: 600
                   }}
                 >
@@ -113,6 +113,9 @@ function SuperAdminPageInner() {
 
         {/* career portal management */}
         <CareerAdmin />
+
+        {/* security/audit trail */}
+        <AuditLogView />
       </div>
     </div>
     </>

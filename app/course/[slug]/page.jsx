@@ -1,335 +1,271 @@
-'use client';
-
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useApp } from '@/context/AppContext';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import SiteNav from '@/components/SiteNav';
-import CheckoutModal from '@/components/CheckoutModal';
+import PromoPopup from '@/components/home/PromoPopup';
+import SiteFooter from '@/components/site/SiteFooter';
+import CourseCover from '@/components/ui/CourseCover';
+import CourseCard from '@/components/ui/CourseCard';
+import Rating from '@/components/ui/Rating';
+import Price from '@/components/ui/Price';
+import Icon from '@/components/Icon';
 import ReviewForm from '@/components/ReviewForm';
-import LessonQAModal from '@/components/LessonQAModal';
-import VideoPlayer from '@/components/VideoPlayer';
-import { modeLabel, modeChip } from '@/lib/catalog';
+import CourseBadges from '@/components/ui/CourseBadges';
+import WaitlistForm from '@/components/course/WaitlistForm';
+import PreviewProvider, { PreviewMediaButton } from '@/components/course/PreviewProvider';
+import Curriculum from '@/components/course/Curriculum';
+import { PurchaseActions, MobileBuyBar } from '@/components/course/PurchasePanel';
+import { getPublicCourse, getRelatedCourses, getViewerCourseState, getOwnedCourseIds, getCompletedLessonIds } from '@/lib/catalogRepo';
+import { currentSession } from '@/lib/auth';
+import { getCopy } from '@/lib/lang';
+import { copy, num, duration, dateLabel } from '@/lib/copy';
+import { categoryLabel } from '@/lib/categoryLabel';
+import { abs } from '@/lib/seo';
 
-const LESSON_ICON = { video: '▶', pdf: '📄', quiz: '❓', assignment: '✍' };
+export const dynamic = 'force-dynamic';
 
-function Stars({ rating }) {
-  const full = Math.round(rating || 0);
-  return <span style={{ color: '#f59e0b', letterSpacing: 1 }}>{'★'.repeat(full)}<span style={{ color: 'var(--line)' }}>{'★'.repeat(5 - full)}</span></span>;
+export async function generateMetadata({ params }) {
+  const course = await getPublicCourse(params.slug);
+  const { lang } = getCopy();
+  if (!course) return { title: copy(lang).unavailableT, robots: { index: false } };
+  const description = (course.tagline || course.description || '').slice(0, 180);
+  const url = abs(`/course/${course.slug}`);
+  return {
+    title: course.title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { type: 'website', url, title: course.title, description, images: course.thumbnailUrl ? [{ url: abs(course.thumbnailUrl) }] : undefined }
+  };
 }
 
-function CourseDetails() {
-  const { slug } = useParams();
-  const router = useRouter();
-  const search = useSearchParams();
-  const { t, lang, loaded, auth, courses, batches, enrollments, showToast, wishlist, toggleWishlist } = useApp();
-  const STUDENT_ID = auth?.studentId;
-  const [openFaq, setOpenFaq] = useState(null);
-  const [checkout, setCheckout] = useState(false);
-  const [qaLesson, setQaLesson] = useState(null);
-  const [previewLesson, setPreviewLesson] = useState(null);
-  const enrollTriedRef = useRef(false);
+export default async function CoursePage({ params }) {
+  const { lang, c } = getCopy();
+  const course = await getPublicCourse(params.slug);
+  if (!course) notFound();
+  const session = currentSession();
+  const [state, related, owned, completedIds] = await Promise.all([
+    getViewerCourseState(session, course.id), getRelatedCourses(course, 4), getOwnedCourseIds(session), getCompletedLessonIds(session, course.id)
+  ]);
+  const isOwner = state.status === 'enrolled';
+  const upcoming = state.status === 'upcoming';
+  const social = course.free ? course.enrollmentCount : course.purchaseCount;
+  const offerText = course.offer ? (course.offer.type === 'percent' ? `${num(lang, course.offer.value)}%` : `৳${num(lang, course.offer.value)}`) : null;
+  const catLabel = categoryLabel(lang, course.category, course.categoryName);
+  const totalSeconds = course.modules.reduce((s, m) => s + m.durationSeconds, 0);
+  const previewCount = course.previewLessons.length;
 
-  const course = loaded ? courses.find((c) => c.slug === slug) : null;
-
-  // return-URL flow: guest clicks Enroll → login → returns here with ?enroll=1 → auto-complete enrollment
-  useEffect(() => {
-    if (!loaded || !course || search.get('enroll') !== '1' || auth?.role !== 'student') return;
-    if (enrollTriedRef.current) return;
-    enrollTriedRef.current = true;
-    const already = enrollments.some((e) => e.studentId === STUDENT_ID && e.courseId === course.id);
-    if (already) { router.replace('/student'); return; }
-    setCheckout(true); // return-to-checkout: land back here and complete enrollment
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, course, auth, search]);
-
-  if (!loaded) {
-    return (<><SiteNav /><div style={{ maxWidth: 1280, margin: '60px auto', textAlign: 'center', color: 'var(--faint)' }}>…</div></>);
-  }
-
-  if (!course || !course.published) {
-    return (
-      <>
-        <SiteNav />
-        <div style={{ maxWidth: 700, margin: '80px auto', textAlign: 'center', padding: 20 }}>
-          <div style={{ fontSize: 40 }}>🔍</div>
-          <div style={{ fontSize: 20, fontWeight: 700, marginTop: 10 }}>{t.cdNotFound}</div>
-          <button className="btn-primary" style={{ marginTop: 20 }} onClick={() => router.push('/landing')}>{t.backToSite}</button>
-        </div>
-      </>
-    );
-  }
-
-  const enrolledCount = enrollments.filter((e) => e.courseId === course.id).length;
-  const courseBatches = batches.filter((b) => b.courseId === course.id);
-  const isEnrolled = auth?.role === 'student' && enrollments.some((e) => e.studentId === STUDENT_ID && e.courseId === course.id);
-  const free = course.price === 0;
-  const discount = course.oldPrice && course.price ? Math.round((1 - course.price / course.oldPrice) * 100) : 0;
-  const related = courses.filter((c) => c.published && c.id !== course.id);
-
-  const onEnroll = () => {
-    if (!auth) {
-      const returnTo = encodeURIComponent(`/course/${course.slug}?enroll=1`);
-      router.push(`/login?role=student&returnTo=${returnTo}`);
-      return;
-    }
-    if (auth.role !== 'student') { showToast(t.roleStudent); return; }
-    setCheckout(true);
+  const ld = {
+    '@context': 'https://schema.org', '@type': 'Course', name: course.title,
+    description: course.tagline || course.description?.slice(0, 300) || course.title,
+    url: abs(`/course/${course.slug}`), inLanguage: course.language === 'English' ? 'en' : 'bn',
+    provider: { '@type': 'Organization', name: 'Leo Learning', url: abs('/') },
+    ...(upcoming ? {} : { offers: { '@type': 'Offer', category: course.price ? 'Paid' : 'Free', price: course.price, priceCurrency: 'BDT', availability: 'https://schema.org/InStock', url: abs(`/course/${course.slug}`) } }),
+    ...(course.rating != null && course.reviewCount ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: course.rating, reviewCount: course.reviewCount } } : {}),
+    ...(course.instructorProfile ? { instructor: { '@type': 'Person', name: course.instructorProfile.name } } : {})
   };
 
-  // Called by CheckoutModal only for the free/instant-paid path — the server
-  // (POST /api/orders) has already created the order and the enrollment by
-  // the time this runs. A paid purchase never calls this: CheckoutModal
-  // redirects the whole page to bKash instead.
-  const confirmEnroll = async () => {
-    showToast(t.enrolledToastCourse);
-    setCheckout(false);
-    router.push('/student');
-  };
-
-  // Free lessons open a real, entitlement-checked preview player right here —
-  // VideoPlayer re-verifies is_free server-side itself, so this works for a
-  // guest with no account at all. Enrolled students land in the full player
-  // (see the "Continue course" button below); anyone else clicking a locked
-  // lesson just gets pointed at enrolling.
-  const lessonClick = (l) => {
-    if (isEnrolled) { router.push(`/learn/${course.slug}/${l.id}`); return; }
-    if (l.type === 'video' && l.free) { setPreviewLesson(l); return; }
-    showToast(l.free ? t.cdPreviewToast : t.cdLockedToast);
-  };
-
-  const section = { fontSize: 19, fontWeight: 700, margin: '0 0 14px' };
+  const includes = [
+    course.lessonCount > 0 && ['list', c.incLessons(course.lessonCount)],
+    totalSeconds > 0 && ['video', c.incVideo(duration(lang, totalSeconds))],
+    previewCount > 0 && ['eye', c.incPreview(previewCount)],
+    ['phone', c.incDevices],
+    ['refresh', c.incProgress],
+    ['award', c.incCert]
+  ].filter(Boolean);
 
   return (
-    <>
+    <PreviewProvider courseTitle={course.title} previews={course.previewLessons} lang={lang}>
       <SiteNav />
-      <div className="anim-in" style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 20px 80px' }}>
-        <button onClick={() => router.push('/landing')} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', padding: 0, marginBottom: 14 }}>
-          ← {t.navAllCourses}
-        </button>
-
-        {/* header */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 340px', gap: 28, alignItems: 'start' }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-              {course.mode && <span className={`tag ${modeChip(course.mode)}`}>{modeLabel(t, course.mode)}</span>}
-              <span className="tag chip-stone">{course.level}</span>
-              <span className="tag chip-orange">{course.language}</span>
-            </div>
-            <h1 style={{ margin: '0 0 10px', fontSize: 'clamp(24px,3.4vw,34px)', lineHeight: 1.2, fontWeight: 700 }}>{course.title}</h1>
-            <p style={{ margin: '0 0 12px', color: 'var(--ink-soft)', fontSize: 15.5, lineHeight: 1.6 }}>{course.tagline}</p>
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', fontSize: 13.5, color: 'var(--muted)' }}>
-              <span><Stars rating={course.rating} /> <b style={{ color: 'var(--coal)' }}>{course.rating}</b> ({course.ratingCount})</span>
-              <span>👥 {enrolledCount} {t.cdEnrolledN}</span>
-              <span>👩‍🏫 {t.cdInstructor}: {course.instructorId ? (
-                <button onClick={() => router.push(`/instructor/${course.instructorId}`)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 700, color: 'var(--brand-deep)', padding: 0, textDecoration: 'underline' }}>{course.instructor}</button>
-              ) : <b style={{ color: 'var(--ink-soft)' }}>{course.instructor}</b>}</span>
-            </div>
-
-            {/* what you'll learn */}
-            {course.whatYouLearn?.length > 0 && (
-              <div className="panel" style={{ padding: 20, marginTop: 22 }}>
-                <h2 style={section}>{t.cdWhatLearn}</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(240px,100%),1fr))', gap: 10 }}>
-                  {course.whatYouLearn.map((w, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13.5, lineHeight: 1.5 }}>
-                      <span style={{ color: 'var(--green)' }}>✓</span> {w}
-                    </div>
-                  ))}
+      <main id="main" className={isOwner || upcoming ? '' : 'has-buy-bar'}>
+        <section className="course-hero on-dark">
+          <div className="container">
+            <nav aria-label="Breadcrumb">
+              <ol className="crumbs" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                <li><Link href="/">{c.home}</Link></li>
+                <li aria-hidden="true"><Icon name="chevronRight" size={14} /></li>
+                <li><Link href="/courses">{c.navCourses}</Link></li>
+                {course.category && <>
+                  <li aria-hidden="true"><Icon name="chevronRight" size={14} /></li>
+                  <li><Link href={`/courses?category=${encodeURIComponent(course.category)}`}>{catLabel}</Link></li>
+                </>}
+              </ol>
+            </nav>
+            <div className="course-layout" style={{ marginTop: 0 }}>
+              <div>
+                <CourseBadges badges={course.badges} lang={lang} className="hero-badges" />
+                <h1>{course.title}</h1>
+                {course.tagline && <p className="lead">{course.tagline}</p>}
+                <div className="meta">
+                  {upcoming ? null : course.rating != null && course.reviewCount > 0
+                    ? <a href="#rev-h" className="hero-rating"><Rating value={course.rating} count={course.reviewCount} lang={lang} countLabel={c.reviewsN(course.reviewCount)} /></a>
+                    : <span><Icon name="star" size={16} />{c.noReviewsYet}</span>}
+                  {!upcoming && social > 0 && <span><Icon name="users" size={16} />{course.free ? c.studentsN(social) : c.purchasersN(social)}</span>}
+                  {upcoming && <span><Icon name="clock" size={16} />{course.releaseDate ? c.releaseOn(dateLabel(lang, course.releaseDate)) : c.tba}</span>}
+                  {course.className && <span><Icon name="book" size={16} /><Link className="link" style={{ color: '#FDBA74' }} href={`/courses?class=${encodeURIComponent(course.classSlug)}`}>{course.className}</Link></span>}
+                  {course.instructor && <span><Icon name="user" size={16} />{course.instructorProfile ? <Link className="link" style={{ color: '#FDBA74' }} href={`/instructor/${course.instructorProfile.id}`}>{course.instructor}</Link> : course.instructor}</span>}
+                  {course.language && <span><Icon name="language" size={16} />{course.language}</span>}
+                  {course.level && course.level !== course.className && <span><Icon name="bar" size={16} />{course.level}</span>}
+                  {course.updatedAt && <span><Icon name="clock" size={16} />{c.updated} {dateLabel(lang, course.updatedAt)}</span>}
                 </div>
               </div>
-            )}
-
-            {/* description */}
-            <div style={{ marginTop: 26 }}>
-              <h2 style={section}>{t.cdDescription}</h2>
-              <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.75, color: 'var(--ink-soft)' }}>{course.description}</p>
+              <div aria-hidden="true" />
             </div>
-
-            {/* requirements */}
-            {course.requirements?.length > 0 && (
-              <div style={{ marginTop: 26 }}>
-                <h2 style={section}>{t.cdRequirements}</h2>
-                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.9, color: 'var(--ink-soft)' }}>
-                  {course.requirements.map((r, i) => <li key={i}>{r}</li>)}
-                </ul>
-              </div>
-            )}
-
-            {/* curriculum + free-preview playlist */}
-            <div style={{ marginTop: 26 }}>
-              <h2 style={section}>{t.cdCurriculum}</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {course.modules.map((m) => (
-                  <div key={m.id} className="card" style={{ overflow: 'hidden' }}>
-                    <div style={{ padding: '12px 16px', fontWeight: 700, fontSize: 14, background: 'var(--paper)', borderBottom: '1px solid var(--line-soft)' }}>{m.title}</div>
-                    {m.lessons.map((l) => (
-                      <div key={l.id} className="row-line" style={{ display: 'flex', alignItems: 'center' }}>
-                        <button
-                          onClick={() => lessonClick(l)}
-                          style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', border: 'none', background: 'none', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer' }}
-                        >
-                          <span style={{ width: 18, textAlign: 'center', fontSize: 12, color: l.free ? 'var(--brand)' : 'var(--faint)' }}>{l.free ? LESSON_ICON[l.type] || '▶' : '🔒'}</span>
-                          <span style={{ flex: 1, fontSize: 13.5, minWidth: 0, color: l.free ? 'var(--coal)' : 'var(--muted)' }}>{l.title}</span>
-                          {l.duration && <span style={{ fontSize: 12, color: 'var(--faint)' }}>{l.duration}</span>}
-                          {l.free && <span className="tag chip-green" style={{ flex: 'none' }}>{t.cdPreviewTag}</span>}
-                        </button>
-                        <button onClick={() => setQaLesson(l)} title={t.qa} aria-label="Q&A"
-                          style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '0 14px', fontSize: 15, color: 'var(--muted)' }}>💬</button>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* FAQ */}
-            {course.faqs?.length > 0 && (
-              <div style={{ marginTop: 26 }}>
-                <h2 style={section}>{t.cdFaq}</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {course.faqs.map((f, i) => (
-                    <div key={i} className="card" style={{ padding: '14px 16px', cursor: 'pointer' }} onClick={() => setOpenFaq(openFaq === i ? null : i)}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontWeight: 600, fontSize: 14 }}>
-                        <span>{f.q}</span><span style={{ color: 'var(--faint)' }}>{openFaq === i ? '−' : '+'}</span>
-                      </div>
-                      {openFaq === i && <div style={{ marginTop: 8, fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.6 }}>{f.a}</div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* reviews */}
-            {(course.reviews?.length > 0 || isEnrolled) && (
-              <div style={{ marginTop: 26 }}>
-                <h2 style={section}>{t.cdReviews}</h2>
-                {course.reviews?.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(260px,100%),1fr))', gap: 12 }}>
-                    {course.reviews.map((r, i) => (
-                      <div key={i} className="card" style={{ padding: '16px 18px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Stars rating={r.rating} />
-                          {r.featured && <span className="tag chip-orange" style={{ fontSize: 10.5 }}>★ {t.reviewFeatured}</span>}
-                        </div>
-                        <div style={{ fontSize: 13.5, lineHeight: 1.65, color: '#44403c', margin: '8px 0 10px' }}>&ldquo;{r.text}&rdquo;</div>
-                        <div style={{ fontSize: 12.5, fontWeight: 700 }}>{r.name}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {/* enrolled students can leave a review */}
-                {isEnrolled && <ReviewForm courseId={course.id} />}
-              </div>
-            )}
           </div>
+        </section>
 
-          {/* sticky purchase sidebar */}
-          <div style={{ position: 'sticky', top: 70 }}>
-            <div className="card" style={{ overflow: 'hidden' }}>
-              {course.thumbnailUrl ? (
-                <img src={course.thumbnailUrl} alt={course.title} style={{ height: 150, width: '100%', objectFit: 'cover' }} />
-              ) : (
-                <div className="placeholder-art" style={{ height: 150, fontSize: 12 }}>{course.thumb || 'course'} · banner</div>
+        <div className="container" style={{ paddingTop: 28 }}>
+          <div className="course-layout">
+            <div className="stack course-main" style={{ '--gap': '40px', minWidth: 0 }}>
+              {course.whatYouLearn.length > 0 && (
+                <section aria-labelledby="learn-h" className="surface">
+                  <h2 id="learn-h" className="h3" style={{ padding: '22px 24px 0' }}>{c.whatLearn}</h2>
+                  <ul className="outcomes" style={{ margin: 0 }}>
+                    {course.whatYouLearn.map((w) => <li key={w}><Icon name="check" size={17} />{w}</li>)}
+                  </ul>
+                </section>
               )}
-              <div style={{ padding: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                  <span className="display" style={{ fontSize: 28 }}>{free ? t.cdFree : `৳${course.price}`}</span>
-                  {!free && course.oldPrice && <span style={{ fontSize: 14, color: 'var(--faint)', textDecoration: 'line-through' }}>৳{course.oldPrice}</span>}
-                  {discount > 0 && <span className="tag chip-green">{discount}% {t.cdOff}</span>}
-                </div>
-                {!free && <div style={{ fontSize: 12, color: 'var(--faint)', marginTop: 2 }}>/{t.month}</div>}
 
-                {isEnrolled ? (
-                  <>
-                    <div className="chip chip-green" style={{ marginTop: 14, width: '100%', justifyContent: 'center', display: 'flex' }}>{t.cdEnrolledChip}</div>
-                    <button className="btn-dark" style={{ width: '100%', marginTop: 10, borderRadius: 11, padding: 12 }} onClick={() => router.push(`/learn/${course.slug}`)}>{t.continueCourse} →</button>
-                  </>
-                ) : (
-                  <button className="btn-primary" style={{ width: '100%', marginTop: 14, padding: 13, fontSize: 15 }} onClick={onEnroll}>
-                    {free ? t.cdEnrollFree : t.cdEnrollNow}
-                  </button>
+              {!upcoming && (
+                <section aria-labelledby="cur-h">
+                  <h2 id="cur-h" className="h2" style={{ marginBottom: 12 }}>{c.curriculum}</h2>
+                  <Curriculum modules={course.modules} lang={lang} owned={isOwner} slug={course.slug} completedIds={completedIds} totalSeconds={totalSeconds} lessonCount={course.lessonCount} />
+                </section>
+              )}
+
+              {course.requirements.length > 0 && (
+                <section aria-labelledby="req-h">
+                  <h2 id="req-h" className="h3" style={{ marginBottom: 12 }}>{c.requirements}</h2>
+                  <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--ink-2)', lineHeight: 1.9 }}>{course.requirements.map((r) => <li key={r}>{r}</li>)}</ul>
+                </section>
+              )}
+
+              {course.audience.length > 0 && (
+                <section aria-labelledby="aud-h">
+                  <h2 id="aud-h" className="h3" style={{ marginBottom: 12 }}>{c.audience}</h2>
+                  <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--ink-2)', lineHeight: 1.9 }}>{course.audience.map((r) => <li key={r}>{r}</li>)}</ul>
+                </section>
+              )}
+
+              {course.description && (
+                <section aria-labelledby="desc-h">
+                  <h2 id="desc-h" className="h3" style={{ marginBottom: 12 }}>{c.description}</h2>
+                  <div className="prose">{course.description}</div>
+                </section>
+              )}
+
+              {course.instructorProfile && (
+                <section aria-labelledby="inst-h">
+                  <h2 id="inst-h" className="h3" style={{ marginBottom: 14 }}>{c.instructor}</h2>
+                  <div className="instructor-card">
+                    <span className="instructor-avatar" aria-hidden="true">{course.instructorProfile.name.charAt(0)}</span>
+                    <div className="stack" style={{ '--gap': '6px' }}>
+                      <Link href={`/instructor/${course.instructorProfile.id}`} className="h4 link" style={{ textDecoration: 'none', color: 'var(--ink)' }}>{course.instructorProfile.name}</Link>
+                      {course.instructorProfile.title && <p className="small muted">{course.instructorProfile.title}</p>}
+                      <p className="small muted">{c.coursesN(course.instructorProfile.courseCount)}{course.instructorProfile.learnerCount > 0 ? ` · ${c.studentsN(course.instructorProfile.learnerCount)}` : ''}</p>
+                      {course.instructorProfile.bio && <p className="prose small" style={{ marginTop: 6 }}>{course.instructorProfile.bio}</p>}
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {!upcoming && <section aria-labelledby="rev-h">
+                <h2 id="rev-h" className="h3" style={{ marginBottom: 6 }}>{c.reviews}</h2>
+                <p className="small muted" style={{ marginBottom: 14 }}>{c.verifiedReviewNote}</p>
+                {course.reviewCount > 0 && course.rating != null && (
+                  <div className="rating-summary surface surface-pad">
+                    <div className="rating-big"><strong className="tabular">{num(lang, course.rating.toFixed(1))}</strong><Rating value={course.rating} count={course.reviewCount} lang={lang} showCount={false} /><span className="small muted">{c.reviewsN(course.reviewCount)}</span></div>
+                    <ul className="rating-bars" aria-label={c.ratingBreakdown}>
+                      {course.ratingBreakdown.map((b) => (
+                        <li key={b.stars}><span className="tabular">{num(lang, b.stars)}★</span><span className="bar" aria-hidden="true"><span style={{ width: `${course.reviewCount ? Math.round((b.count / course.reviewCount) * 100) : 0}%` }} /></span><span className="tabular small muted">{num(lang, b.count)}</span></li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
+                {course.reviews.length ? (
+                  <ul className="grid-cards" style={{ listStyle: 'none', padding: 0, margin: 0, gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))' }}>
+                    {course.reviews.map((r) => (
+                      <li key={r.id} className="surface review-card stack" style={{ '--gap': '8px' }}>
+                        <Rating value={r.rating} count={1} lang={lang} showCount={false} />
+                        {r.text && <p style={{ color: 'var(--ink-2)' }}>{r.text}</p>}
+                        <p className="small strong">{r.name} <span className="muted" style={{ fontWeight: 400 }}>· {dateLabel(lang, r.createdAt)}</span></p>
+                        {r.verifiedPurchase && <p className="xsmall row" style={{ '--gap': '4px', color: 'var(--success)' }}><Icon name="checkCircle" size={13} />{c.verifiedBuyer}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="muted">{c.noReviews}</p>}
+                {isOwner && <div style={{ marginTop: 16 }}><ReviewForm courseId={course.id} /></div>}
+              </section>}
 
-                {/* wishlist (logged-in students, not yet enrolled) */}
-                {auth?.role === 'student' && !isEnrolled && (
-                  <button
-                    onClick={() => toggleWishlist(course.id)}
-                    style={{
-                      width: '100%', marginTop: 10, padding: 11, borderRadius: 11, cursor: 'pointer', fontFamily: 'inherit',
-                      fontSize: 13.5, fontWeight: 700, background: 'var(--paper)',
-                      border: wishlist.includes(course.id) ? '1.5px solid var(--brand)' : '1.5px solid var(--line)',
-                      color: wishlist.includes(course.id) ? 'var(--brand-deep)' : 'var(--ink-soft)'
-                    }}
-                  >
-                    {wishlist.includes(course.id) ? `${t.wishlistSaved}` : `♡ ${t.wishlistSave}`}
-                  </button>
-                )}
+              {course.faqs.length > 0 && (
+                <section aria-labelledby="faq-h">
+                  <h2 id="faq-h" className="h3" style={{ marginBottom: 12 }}>{c.courseFaq}</h2>
+                  <div className="accordion">
+                    {course.faqs.map((f) => (
+                      <details key={f.q} className="accordion-item faq">
+                        <summary className="accordion-trigger"><Icon name="chevronDown" size={18} className="chev" /><span className="grow">{f.q}</span></summary>
+                        <div className="accordion-panel">{f.a}</div>
+                      </details>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
 
-                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 9, fontSize: 13, color: 'var(--ink-soft)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{t.cdLevel}</span><b>{course.level}</b></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{t.cdDuration}</span><b>{course.duration}</b></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{t.cdLanguage}</span><b>{course.language}</b></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{t.cdInstructor}</span><b>{course.instructor}</b></div>
+            <aside className="buy-col" aria-label={c.buyNow}>
+              <div className="buy-card">
+                <PreviewMediaButton label={previewCount ? c.previewCourse : course.title}>
+                  <CourseCover id={course.id} title={course.title} category={course.category} kicker={catLabel} thumbnailUrl={course.thumbnailUrl} priority />
+                </PreviewMediaButton>
+                <div className="buy-card-body">
+                  {upcoming && (
+                    <div className="stack" style={{ '--gap': '6px' }}>
+                      <span className="badge badge-info" style={{ alignSelf: 'flex-start' }}><Icon name="clock" size={12} />{c.upcomingT}</span>
+                      <p className="h4">{course.releaseDate ? c.releaseOn(dateLabel(lang, course.releaseDate)) : c.tba}</p>
+                      <p className="small muted">{c.notifyNote}</p>
+                    </div>
+                  )}
+                  {!upcoming && state.status !== 'enrolled' && state.status !== 'staff' && (
+                    <div className="stack" style={{ '--gap': '4px' }}>
+                      <Price price={course.price} listPrice={course.listPrice} lang={lang} freeLabel={c.free} className="buy-price" />
+                      {course.offer && <p className="small row" style={{ '--gap': '6px', flexWrap: 'wrap' }}><span className="badge badge-brand">{c.offerSave(offerText)}</span>{course.offer.endsAt && <span className="muted">{c.offerEnds(dateLabel(lang, course.offer.endsAt))}</span>}</p>}
+                    </div>
+                  )}
+                  {isOwner && state.completionPct != null && (
+                    <div className="stack" style={{ '--gap': '6px' }}>
+                      <div className="progress" role="progressbar" aria-valuenow={state.completionPct} aria-valuemin={0} aria-valuemax={100} aria-label={c.percentDone(state.completionPct)}><span style={{ width: `${state.completionPct}%` }} /></div>
+                      <span className="small muted">{c.percentDone(state.completionPct)}</span>
+                    </div>
+                  )}
+                  {upcoming
+                    ? <WaitlistForm courseId={course.id} lang={lang} signedInEmail={session?.email || null} />
+                    : <PurchaseActions course={{ id: course.id, slug: course.slug, title: course.title, price: course.price, instructor: course.instructor }} state={state} lang={lang} />}
+                  {!upcoming && <ul className="include-list">
+                    {includes.map(([icon, text]) => <li key={text}><Icon name={icon} size={16} />{text}</li>)}
+                  </ul>}
+                  {!upcoming && !isOwner && state.status !== 'staff' && (
+                    <div className="small muted stack" style={{ '--gap': '6px', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                      <p className="row" style={{ alignItems: 'flex-start', '--gap': '8px' }}><Icon name="shield" size={15} style={{ marginTop: 3 }} />{c.accessNote}</p>
+                      {course.price > 0 && <p className="row" style={{ alignItems: 'flex-start', '--gap': '8px' }}><Icon name="receipt" size={15} style={{ marginTop: 3 }} /><span>{c.refundNote} <Link href="/terms#refund" className="link">{c.refundPolicy}</Link></span></p>}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            </aside>
           </div>
+
+          {related.length > 0 && (
+            <section className="section" aria-labelledby="rel-h">
+              <h2 id="rel-h" className="h2" style={{ marginBottom: 20 }}>{c.related}</h2>
+              <div className="grid-cards">
+                {related.map((rc) => <CourseCard key={rc.id} course={rc} lang={lang} owned={owned.has(rc.id)} categoryLabel={categoryLabel(lang, rc.category, rc.categoryName)} />)}
+              </div>
+            </section>
+          )}
         </div>
-
-        {/* related courses */}
-        {related.length > 0 && (
-          <div style={{ marginTop: 40 }}>
-            <h2 style={section}>{t.cdRelated}</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(240px,100%),1fr))', gap: 14 }}>
-              {related.map((rc) => (
-                <button key={rc.id} className="card" onClick={() => router.push(`/course/${rc.slug}`)} style={{ overflow: 'hidden', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
-                  <div className="placeholder-art" style={{ height: 100, fontSize: 11 }}>{rc.thumb}</div>
-                  <div style={{ padding: '12px 14px' }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.35 }}>{rc.title}</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 5 }}>{rc.price ? `৳${rc.price}` : t.cdFree} · <Stars rating={rc.rating} /></div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {checkout && (
-        <CheckoutModal
-          course={course}
-          batch={courseBatches[0]}
-          t={t}
-          onClose={() => setCheckout(false)}
-          onConfirm={confirmEnroll}
-          affiliateCode={search.get('aff') || undefined}
-        />
-      )}
-
-      {qaLesson && <LessonQAModal lesson={qaLesson} onClose={() => setQaLesson(null)} />}
-
-      {previewLesson && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(22,19,15,.7)', zIndex: 90, display: 'grid', placeItems: 'center', padding: 20 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setPreviewLesson(null); }}
-        >
-          <div style={{ width: 'min(760px,100%)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div style={{ color: '#fff', fontWeight: 700, fontSize: 14.5 }}>{previewLesson.title}</div>
-              <button aria-label="Close" onClick={() => setPreviewLesson(null)} style={{ border: 'none', background: 'rgba(255,255,255,.15)', color: '#fff', borderRadius: 8, width: 30, height: 30, fontSize: 14 }}>✕</button>
-            </div>
-            <VideoPlayer lessonId={previewLesson.id} />
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-export default function CourseDetailsPage() {
-  return (
-    <Suspense fallback={<SiteNav />}>
-      <CourseDetails />
-    </Suspense>
+      </main>
+      {!isOwner && !upcoming && state.status !== 'staff' && <MobileBuyBar course={{ id: course.id, slug: course.slug, title: course.title, price: course.price, instructor: course.instructor }} state={state} lang={lang} />}
+      <SiteFooter />
+      <PromoPopup page="course" lang={lang} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, '\\u003c') }} />
+    </PreviewProvider>
   );
 }

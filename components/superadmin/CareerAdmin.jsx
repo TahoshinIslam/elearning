@@ -5,16 +5,16 @@ import { useApp } from '@/context/AppContext';
 import { APP_STATUSES, statusLabel, jobTypeLabel } from '@/lib/career';
 
 const dk = {
-  border: '1px solid rgba(255,255,255,.18)',
-  background: 'rgba(255,255,255,.08)',
-  color: '#fff',
+  border: '1px solid var(--border)',
+  background: 'var(--surface)',
+  color: 'var(--ink)',
   borderRadius: 8,
   padding: '9px 11px',
   fontSize: 13.5,
   fontFamily: 'inherit'
 };
-const panel = { background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 16 };
-const faint = 'rgba(255,255,255,.5)';
+const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16 };
+const faint = 'var(--muted)';
 
 export default function CareerAdmin() {
   const { t, jobs, applications, api, showToast } = useApp();
@@ -63,21 +63,21 @@ export default function CareerAdmin() {
 
       {/* jobs list */}
       <div style={{ ...panel, overflow: 'hidden', marginBottom: 18 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 1fr 1fr', gap: 10, padding: '12px 18px', fontSize: 12, fontWeight: 700, color: faint, borderBottom: '1px solid rgba(255,255,255,.1)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 1fr 1fr', gap: 10, padding: '12px 18px', fontSize: 12, fontWeight: 700, color: faint, borderBottom: '1px solid var(--border)' }}>
           <div>{t.jobTitle}</div><div>{t.company}</div><div>{t.applicants}</div><div>{t.thStatus}</div>
         </div>
         {jobs.map((j) => (
-          <div key={j.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 1fr 1fr', gap: 10, padding: '13px 18px', alignItems: 'center', fontSize: 13.5, borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+          <div key={j.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 1fr 1fr', gap: 10, padding: '13px 18px', alignItems: 'center', fontSize: 13.5, borderBottom: '1px solid var(--border)' }}>
             <div style={{ fontWeight: 600 }}>{j.title}</div>
             <div style={{ color: faint }}>{j.company}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>{applicantCount(j.id)}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 99, padding: '3px 10px', background: j.open ? 'rgba(14,159,110,.22)' : 'rgba(220,38,38,.25)', color: j.open ? '#4ade80' : '#fca5a5' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 99, padding: '3px 10px', background: j.open ? 'var(--success-tint)' : 'var(--danger-tint)', color: j.open ? '#14532D' : '#7F1D1D' }}>
                 {j.open ? t.jobOpen : t.jobClosed}
               </span>
               <button
                 onClick={() => api.toggleJob(j.id)}
-                style={{ border: '1px solid rgba(255,255,255,.25)', background: 'none', color: 'rgba(255,255,255,.8)', borderRadius: 8, padding: '4px 10px', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit' }}
+                style={{ border: '1px solid var(--border)', background: 'none', color: 'var(--muted)', borderRadius: 8, padding: '4px 10px', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit' }}
               >
                 {j.open ? t.jobClosed : t.jobOpen}
               </button>
@@ -92,7 +92,7 @@ export default function CareerAdmin() {
         {applications.length === 0 ? (
           <div style={{ padding: 20, textAlign: 'center', color: faint, fontSize: 13 }}>{t.noApplications}</div>
         ) : applications.map((a) => (
-          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 18px', borderBottom: '1px solid rgba(255,255,255,.07)', flexWrap: 'wrap' }}>
+          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 18px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 160 }}>
               <div style={{ fontWeight: 600, fontSize: 14 }}>{a.studentName}</div>
               <div style={{ fontSize: 12, color: faint }}>{jobTitle(a.jobId)} · {a.appliedAt}</div>

@@ -1,10 +1,10 @@
-'use client';
-
-import { useApp } from '@/context/AppContext';
+import { getLang } from '@/lib/lang';
 import LegalPage from '@/components/LegalPage';
 
+export const metadata = { title: 'Terms' };
+
 export default function TermsPage() {
-  const { lang } = useApp();
+  const lang = getLang();
   const bn = lang === 'bn';
 
   return (
@@ -21,6 +21,7 @@ export default function TermsPage() {
             : 'Enrollment is confirmed after payment is completed. Free courses require no payment.']
         },
         {
+          id: 'refund',
           heading: bn ? 'রিফান্ড নীতি' : 'Refund policy',
           paras: [bn
             ? 'কোর্স শুরুর ৭ দিনের মধ্যে রিফান্ডের জন্য আবেদন করা যাবে, শর্তসাপেক্ষে।'

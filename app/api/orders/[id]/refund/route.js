@@ -1,0 +1,18 @@
+import { NextResponse } from 'next/server';
+import { requireRole } from '@/lib/auth';
+import { errResponse } from '@/lib/repo';
+import { refundOrder } from '@/lib/orderRepo';
+
+export const dynamic = 'force-dynamic';
+
+// Records a refund and revokes the access this order granted (see
+// lib/orderRepo.js refundOrder). The money is returned via the bKash
+// merchant panel.
+export async function POST(request, { params }) {
+  try {
+    const session = requireRole('owner', 'superadmin');
+    const body = await request.json().catch(() => ({}));
+    const result = await refundOrder(session, Number(params.id), { reason: body.reason });
+    return NextResponse.json(result);
+  } catch (e) { return errResponse(e); }
+}

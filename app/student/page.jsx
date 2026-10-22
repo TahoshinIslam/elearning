@@ -1,93 +1,56 @@
-'use client';
-
-import { useState } from 'react';
-import { useApp } from '@/context/AppContext';
-import RoleGuard from '@/components/RoleGuard';
+import { redirect } from 'next/navigation';
 import SiteNav from '@/components/SiteNav';
-import ClassesTab from '@/components/student/ClassesTab';
-import CoursesTab from '@/components/student/CoursesTab';
-import QuizzesTab from '@/components/student/QuizzesTab';
-import WishlistTab from '@/components/student/WishlistTab';
-import ReferralTab from '@/components/student/ReferralTab';
-import RecordingsTab from '@/components/student/RecordingsTab';
-import ResourcesTab from '@/components/student/ResourcesTab';
-import ProfileTab from '@/components/student/ProfileTab';
-import CertificatesTab from '@/components/student/CertificatesTab';
+import StudentShell from '@/components/student/views/StudentShell';
+import MyLearning from '@/components/student/views/MyLearning';
+import OrdersView from '@/components/student/views/OrdersView';
+import CertificatesView from '@/components/student/views/CertificatesView';
+import WishlistView from '@/components/student/views/WishlistView';
+import AccountView from '@/components/student/views/AccountView';
+import LiveClassesView from '@/components/student/views/LiveClassesView';
 import CareerTab from '@/components/student/CareerTab';
-import PayModal from '@/components/student/PayModal';
+import ReferralTab from '@/components/student/ReferralTab';
+import { currentSession } from '@/lib/auth';
+import { ROLE_HOME } from '@/lib/rbac';
+import { getMyLearning } from '@/lib/learningRepo';
+import { getOrdersForStudent } from '@/lib/orderRepo';
+import { getWishlist } from '@/lib/wishlistRepo';
+import { listPublishedCourses } from '@/lib/catalogRepo';
+import { getCertificates } from '@/lib/repo';
+import { getLang } from '@/lib/lang';
 
-const TABS = [
-  { key: 'classes', label: 'sClasses' },
-  { key: 'courses', label: 'myCourses' },
-  { key: 'quizzes', label: 'sQuizzes' },
-  { key: 'wishlist', label: 'wishlist' },
-  { key: 'recordings', label: 'sRecordings' },
-  { key: 'resources', label: 'sResources' },
-  { key: 'certificates', label: 'sCertificates' },
-  { key: 'career', label: 'career' },
-  { key: 'referral', label: 'referral' },
-  { key: 'profile', label: 'sProfile' }
-];
+export const dynamic = 'force-dynamic';
+export const metadata = { title: 'My learning', robots: { index: false } };
 
-function StudentPageInner() {
-  const { t, auth, enrollments, batches } = useApp();
-  const [tab, setTab] = useState('classes');
-  const [payOpen, setPayOpen] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
+const VIEWS = ['learning', 'orders', 'certificates', 'wishlist', 'live', 'career', 'referral', 'account'];
 
-  const studentName = auth?.name || t.roleStudent;
-  // batch label from the student's first active enrollment (else role)
-  const firstEnrollment = enrollments.find((e) => e.studentId === auth?.studentId);
-  const batchLabel = batches.find((b) => b.id === firstEnrollment?.batchId)?.name || t.roleStudent;
-  const pick = (k) => { setTab(k); setNavOpen(false); };
+// "My Learning" and the student account area. Every number shown is read
+// from the database for the signed-in student only.
+export default async function StudentPage({ searchParams }) {
+  const session = currentSession();
+  if (!session) redirect('/login?returnTo=/student');
+  if (session.role !== 'student' || !session.studentId) redirect(ROLE_HOME[session.role] || '/');
+  const lang = getLang();
+  const view = VIEWS.includes(searchParams?.view) ? searchParams.view : 'learning';
+
+  let body = null;
+  if (view === 'learning') body = <MyLearning lang={lang} courses={await getMyLearning(session)} />;
+  else if (view === 'orders') body = <OrdersView lang={lang} orders={await getOrdersForStudent(session)} />;
+  else if (view === 'certificates') {
+    const [courses, certs] = await Promise.all([getMyLearning(session), getCertificates(new URLSearchParams({ studentId: String(session.studentId) }))]);
+    body = <CertificatesView lang={lang} courses={courses} certificates={certs} />;
+  } else if (view === 'wishlist') {
+    const ids = await getWishlist(session.studentId);
+    const all = ids.length ? (await listPublishedCourses({ sort: 'relevance', page: 1 }, { pageSize: 200 })).items : [];
+    body = <WishlistView lang={lang} courses={ids.map((id) => all.find((c) => c.id === id)).filter(Boolean)} />;
+  } else if (view === 'live') body = <LiveClassesView lang={lang} />;
+  else if (view === 'career') body = <CareerTab />;
+  else if (view === 'referral') body = <ReferralTab />;
+  else body = <AccountView lang={lang} user={{ name: session.name, email: session.email }} />;
 
   return (
     <>
-    <SiteNav />
-    <div className="shell">
-      {/* sidebar (slide-in drawer on small screens) */}
-      <aside className={`sidebar ${navOpen ? 'open' : ''}`}>
-        <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px 16px' }}>
-          <div className="avatar" style={{ width: 38, height: 38, background: 'var(--brand)', color: '#fff', fontSize: 15 }}>{studentName[0]}</div>
-          <div style={{ lineHeight: 1.25, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{studentName}</div>
-            <div style={{ fontSize: 10.5, color: 'var(--faint)' }}>{batchLabel}</div>
-          </div>
-        </div>
-
-        {TABS.map(({ key, label }) => (
-          <button key={key} className={`side-tab ${tab === key ? 'active' : ''}`} onClick={() => pick(key)}>
-            {t[label]}
-          </button>
-        ))}
-      </aside>
-
-      {/* backdrop closes the drawer */}
-      <div className={`sidebar-backdrop ${navOpen ? 'show' : ''}`} onClick={() => setNavOpen(false)} />
-
-      {/* main */}
-      <main className="dash-main">
-        <div style={{ maxWidth: 1040, margin: '0 auto' }}>
-          <button className="drawer-toggle" onClick={() => setNavOpen(true)}>☰ {t.menu}</button>
-          {tab === 'classes' && <ClassesTab onOpenPay={() => setPayOpen(true)} />}
-          {tab === 'courses' && <CoursesTab />}
-          {tab === 'quizzes' && <QuizzesTab />}
-          {tab === 'wishlist' && <WishlistTab />}
-          {tab === 'recordings' && <RecordingsTab />}
-          {tab === 'resources' && <ResourcesTab />}
-          {tab === 'certificates' && <CertificatesTab />}
-          {tab === 'career' && <CareerTab />}
-          {tab === 'referral' && <ReferralTab />}
-          {tab === 'profile' && <ProfileTab />}
-        </div>
-      </main>
-
-      {payOpen && <PayModal onClose={() => setPayOpen(false)} />}
-    </div>
+      <SiteNav />
+      <StudentShell lang={lang} view={view} name={session.name}>{body}</StudentShell>
     </>
   );
-}
-
-export default function StudentPage() {
-  return <RoleGuard allow="student"><StudentPageInner /></RoleGuard>;
 }

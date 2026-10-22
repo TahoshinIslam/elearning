@@ -13,16 +13,16 @@ export async function POST(request, { params }) {
     const body = await request.json();
     const courseId = Number(params.id);
     if (body.action === 'submit') {
-      requireRole('owner', 'superadmin');
-      return NextResponse.json(await submitForReview(courseId));
+      const session = requireRole('owner', 'superadmin');
+      return NextResponse.json(await submitForReview(session, courseId));
     }
     if (body.action === 'approve') {
-      requireRole('superadmin');
-      return NextResponse.json(await approveReview(courseId));
+      const session = requireRole('superadmin');
+      return NextResponse.json(await approveReview(session, courseId));
     }
     if (body.action === 'reject') {
-      requireRole('superadmin');
-      return NextResponse.json(await rejectReview(courseId, body.note));
+      const session = requireRole('superadmin');
+      return NextResponse.json(await rejectReview(session, courseId, body.note));
     }
     return NextResponse.json({ error: 'invalid_action' }, { status: 400 });
   } catch (e) { return errResponse(e); }

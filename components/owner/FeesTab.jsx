@@ -77,7 +77,7 @@ export default function FeesTab() {
               <div style={{ fontWeight: 600, fontSize: 14.5 }}>{s.name}</div>
               <div style={{ fontSize: 12, color: 'var(--faint)' }}>{s.batch}</div>
             </div>
-            <div className="display" style={{ fontWeight: 800, fontSize: 15 }}>৳{s.amount.toLocaleString('en-IN')}</div>
+            <div className="display" style={{ fontWeight: 700, fontSize: 15 }}>৳{s.amount.toLocaleString('en-IN')}</div>
             {s.paid ? (
               <span className="chip chip-green">✓ {t.paid}</span>
             ) : (
@@ -110,7 +110,7 @@ export default function FeesTab() {
             </div>
             <div style={{ color: 'var(--muted)' }}>{typeLabel(p.type)}</div>
             <div className="mono" style={{ fontSize: 12, color: 'var(--muted)' }}>{p.invoiceNo}</div>
-            <div className="display" style={{ fontWeight: 800 }}>{fmt(p.amount)}</div>
+            <div className="display" style={{ fontWeight: 700 }}>{fmt(p.amount)}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {p.status === 'success' ? (
                 <>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useMemo, useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { makeStore } from '@/store/store';
 import {
@@ -71,9 +72,15 @@ function AuthHydrator({ children }) {
   return children;
 }
 
-export function AppProvider({ children }) {
+// initialAuth / initialLang come from the server layout (session cookie +
+// language cookie), so the first client render already knows who's here.
+export function AppProvider({ children, initialAuth, initialLang }) {
   const storeRef = useRef(null);
-  if (!storeRef.current) storeRef.current = makeStore();
+  if (!storeRef.current) {
+    storeRef.current = makeStore(initialAuth !== undefined
+      ? { auth: initialAuth, authReady: true, lang: initialLang === 'en' ? 'en' : 'bn' }
+      : { lang: initialLang === 'en' ? 'en' : 'bn' });
+  }
   return (
     <Provider store={storeRef.current}>
       <AuthHydrator>{children}</AuthHydrator>
@@ -87,27 +94,38 @@ export function useApp() {
   const dispatch = useDispatch();
   const { lang, auth, authReady, centerName, brandColor, payModel, toast, studentPaid } = useSelector((s) => s.ui);
 
-  // REST data via RTK Query (deduped/cached globally)
-  const { data: students = [], isSuccess: sOk } = useGetStudentsQuery();
-  const { data: batches = [], isSuccess: bOk } = useGetBatchesQuery();
-  const { data: teachers = [], isSuccess: tOk } = useGetTeachersQuery();
-  const { data: tenants = [], isSuccess: tnOk } = useGetTenantsQuery();
-  const { data: courses = [], isSuccess: cOk, refetch: refetchCourses } = useGetCoursesQuery();
-  const { data: enrollments = [], isSuccess: eOk } = useGetEnrollmentsQuery();
-  const { data: submissions = [], isSuccess: subOk } = useGetSubmissionsQuery();
-  const { data: attendance = [], isSuccess: aOk } = useGetAttendanceQuery();
-  const { data: certificates = [], isSuccess: ceOk } = useGetCertificatesQuery();
-  const { data: jobs = [], isSuccess: jOk } = useGetJobsQuery();
-  const { data: applications = [], isSuccess: apOk } = useGetApplicationsQuery();
-  const { data: liveClasses = [], isSuccess: lcOk } = useGetLiveClassesQuery();
-  // Staff-only endpoint (POST/GET /api/payments requires owner/teacher/
-  // superadmin) — skip it entirely for everyone else so it neither fires a
-  // request that's guaranteed to 401/403 nor (see below) blocks `loaded`.
-  const isStaff = auth?.role === 'owner' || auth?.role === 'teacher' || auth?.role === 'superadmin';
-  const { data: payments = [] } = useGetPaymentsQuery(undefined, { skip: !isStaff });
-  // Deliberately excludes payments: it's a staff-dashboard concern, not
-  // something every visitor's page load should depend on.
-  const loaded = sOk && bOk && tOk && tnOk && cOk && eOk && subOk && aOk && ceOk && jOk && apOk && lcOk;
+  // REST data via RTK Query (deduped/cached globally). Each dataset is only
+  // requested by a role allowed to read it — visitors no longer pull staff
+  // rosters, and students only ever receive their own rows (the API scopes
+  // them server-side regardless).
+  const role = auth?.role;
+  const isStaff = role === 'owner' || role === 'teacher' || role === 'superadmin';
+  const isAdmin = role === 'owner' || role === 'superadmin';
+  const isStudent = role === 'student';
+  const signedIn = !!auth;
+  const ready = authReady;
+  const opt = (allowed) => ({ skip: !ready || !allowed });
+  const sq = useGetStudentsQuery(undefined, opt(isStaff));
+  const bq = useGetBatchesQuery(undefined, opt(true));
+  const tq = useGetTeachersQuery(undefined, opt(isStaff));
+  const tnq = useGetTenantsQuery(undefined, opt(isAdmin));
+  const cq = useGetCoursesQuery(undefined, opt(true));
+  const eq = useGetEnrollmentsQuery(undefined, opt(signedIn));
+  const subq = useGetSubmissionsQuery(undefined, opt(isStudent || isStaff));
+  const aq = useGetAttendanceQuery(undefined, opt(isStudent || isStaff));
+  const ceq = useGetCertificatesQuery(undefined, opt(isStudent || isStaff));
+  const jq = useGetJobsQuery(undefined, opt(true));
+  const apq = useGetApplicationsQuery(undefined, opt(isStudent || isStaff));
+  const lcq = useGetLiveClassesQuery(undefined, opt(signedIn));
+  const { data: payments = [] } = useGetPaymentsQuery(undefined, opt(isStaff));
+  const all = [sq, bq, tq, tnq, cq, eq, subq, aq, ceq, jq, apq, lcq];
+  const students = sq.data || [], batches = bq.data || [], teachers = tq.data || [], tenants = tnq.data || [];
+  const courses = cq.data || [], enrollments = eq.data || [], submissions = subq.data || [], attendance = aq.data || [];
+  const certificates = ceq.data || [], jobs = jq.data || [], applications = apq.data || [], liveClasses = lcq.data || [];
+  const refetchCourses = cq.refetch;
+  // loaded = every dataset this role may read has arrived (skipped ones
+  // count as done; a failed one too, so a single error can't hang a page).
+  const loaded = ready && all.every((x) => x.isUninitialized || x.isSuccess || x.isError);
 
   // mutation triggers
   const [addStudent] = useAddStudentMutation();
@@ -148,6 +166,8 @@ export function useApp() {
     removeTeacherBatch: (id, batchName) => removeTeacherBatch({ id, batchName }).unwrap(),
     toggleTenant: (id) => toggleTenant({ id }).unwrap(),
     // curriculum
+    courseOp: (body) => courseOp(body).unwrap(),
+    refetchCourses: () => refetchCourses(),
     addCourse: (title) => addCourse({ title }).unwrap(),
     toggleCoursePublish: (courseId) => courseOp({ op: 'publish', courseId }).unwrap(),
     toggleCourseFeatured: (courseId) => courseOp({ op: 'toggleFeatured', courseId }).unwrap(),
@@ -234,6 +254,24 @@ export function useApp() {
     // payments (staff-only manual fee recording — real checkout is createOrder below)
     recordPayment: (payload) => recordPayment(payload).unwrap(),
     refundPayment: (id) => refundPayment({ id }).unwrap(),
+    // real marketplace orders (Phase 3) — distinct from the legacy manual
+    // payments ledger above.
+    getOrders: async () => {
+      const res = await fetch('/api/orders');
+      if (!res.ok) return [];
+      return res.json();
+    },
+    refundOrder: async (orderId) => {
+      const res = await fetch(`/api/orders/${orderId}/refund`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    },
+    getAuditLog: async (action) => {
+      const res = await fetch(`/api/audit-log${action ? `?action=${action}` : ''}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
     // real checkout: server computes price + coupon, creates a pending order,
     // and either enrolls immediately (free) or returns a bKash redirect URL.
     // payload: { courseId } or { items: [{courseId}], couponCode?, affiliateCode? }
@@ -585,8 +623,19 @@ export function useApp() {
     { name: 'সাদিয়া আফরিন', phone: '01933-221100', batch: 'HSC ফিজিক্স — ব্যাচ ৩', amount: 1500 }
   ]), []);
 
-  const setLang = useCallback((l) => dispatch(setLangAction(l)), [dispatch]);
-  const toggleLang = useCallback(() => dispatch(toggleLangAction()), [dispatch]);
+  const router = useRouter();
+  // Language lives in a cookie too, so server-rendered pages follow the toggle.
+  const persistLang = useCallback((l) => {
+    try { document.cookie = `leo_lang=${l}; path=/; max-age=31536000; samesite=lax`; } catch { /* ignore */ }
+    try { document.documentElement.lang = l; } catch { /* ignore */ }
+    router.refresh();
+  }, [router]);
+  const toggleLang = useCallback(() => {
+    const next = lang === 'bn' ? 'en' : 'bn';
+    dispatch(setLangAction(next));
+    persistLang(next);
+  }, [dispatch, lang, persistLang]);
+  const setLang = useCallback((l) => { dispatch(setLangAction(l)); persistLang(l); }, [dispatch, persistLang]);
   const login = useCallback((email, password) => dispatch(loginThunk(email, password)), [dispatch]);
   const register = useCallback((payload) => dispatch(registerThunk(payload)), [dispatch]);
   const logout = useCallback(() => dispatch(logoutThunk()), [dispatch]);

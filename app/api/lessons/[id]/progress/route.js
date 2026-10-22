@@ -2,17 +2,19 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { errResponse } from '@/lib/repo';
 import { saveProgress } from '@/lib/videoRepo';
+import { rateLimit, LIMITS } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
-// Saves watch position. `completed` is never taken from the client — see
-// lib/videoRepo.js saveProgress(), which recomputes it server-side from
-// watchedSeconds vs. the video's real duration.
+// Saves watch progress for the signed-in student's own record only (there
+// is no studentId parameter). Completion is derived server-side from the
+// played ranges — see lib/videoRepo.js saveProgress / lib/watchRanges.js.
 export async function POST(request, { params }) {
   try {
     const session = requireUser();
-    const body = await request.json();
-    const result = await saveProgress(session, Number(params.id), body);
-    return NextResponse.json(result);
+    rateLimit(`progress:${session.id}`, LIMITS.progress);
+    // sendBeacon posts text/plain; parse the body ourselves either way.
+    const body = JSON.parse((await request.text()) || '{}');
+    return NextResponse.json(await saveProgress(session, Number(params.id), body));
   } catch (e) { return errResponse(e); }
 }

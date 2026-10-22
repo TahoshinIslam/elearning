@@ -1,51 +1,31 @@
 'use client';
 
+import { useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import Icon from '@/components/Icon';
+import { usePresence } from '@/components/ui/motion';
 
-// colour + icon per action kind
-const STYLES = {
-  success: { bg: '#15794a', icon: 'check' },
-  error: { bg: '#c92a2a', icon: 'x' },
-  info: { bg: '#1d4ed8', icon: 'info' },
-  default: { bg: 'var(--coal)', icon: 'info' }
-};
+const ICON = { success: 'checkCircle', error: 'alert', info: 'info', default: 'info' };
 
+// Polite live region. Toasts confirm outcomes that really happened (the
+// caller shows one only after the server responded). The last message is
+// kept while it fades out.
 export default function Toast() {
   const { toast } = useApp();
-  if (!toast) return null;
-
-  // supports both the new { msg, kind } shape and a plain string (back-compat)
-  const msg = typeof toast === 'string' ? toast : toast.msg;
-  const kind = typeof toast === 'string' ? 'default' : (toast.kind || 'default');
-  if (!msg) return null;
-  const s = STYLES[kind] || STYLES.default;
-
+  const msg = toast ? (typeof toast === 'string' ? toast : toast.msg) : null;
+  const kind = toast && typeof toast !== 'string' ? toast.kind || 'default' : 'default';
+  const last = useRef({ msg: null, kind: 'default' });
+  if (msg) last.current = { msg, kind };
+  const { mounted, state, onAnimationEnd } = usePresence(!!msg);
+  const shown = msg ? { msg, kind } : last.current;
   return (
-    <div
-      role="status"
-      style={{
-        position: 'fixed',
-        bottom: 26,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 99,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        background: s.bg,
-        color: '#fff',
-        borderRadius: 12,
-        padding: '13px 20px',
-        fontSize: 14,
-        fontWeight: 600,
-        boxShadow: 'var(--shadow-pop)',
-        animation: 'leoToast .25s ease',
-        maxWidth: 'calc(100vw - 40px)'
-      }}
-    >
-      <Icon name={s.icon} size={17} />
-      <span>{msg}</span>
+    <div className="toast-region" role="status" aria-live="polite" aria-atomic="true">
+      {mounted && shown.msg && (
+        <div className={`toast toast-${shown.kind}`} data-state={state} onAnimationEnd={onAnimationEnd}>
+          <Icon name={ICON[shown.kind] || 'info'} size={18} style={{ marginTop: 2 }} />
+          <span>{shown.msg}</span>
+        </div>
+      )}
     </div>
   );
 }

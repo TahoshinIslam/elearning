@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/auth';
+import { requireUser } from '@/lib/auth';
 import { errResponse } from '@/lib/repo';
-import { requestUploadUrl } from '@/lib/videoRepo';
+import { requestUploadUrl, reportUploadFailure } from '@/lib/videoRepo';
+import { rateLimit, LIMITS } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
-// Same permission level as the course builder (owner/superadmin) — matches
-// how PATCH /api/courses is already guarded, so this doesn't introduce a
-// new, inconsistent access tier for course content management.
+// Course managers only (owner/superadmin, or the course's own instructor) —
+// enforced in lib/videoRepo.js via lib/access.js. Validates type and size
+// before minting a signed upload URL.
 export async function POST(request, { params }) {
   try {
-    requireRole('owner', 'superadmin');
+    const session = requireUser();
+    rateLimit(`upload:${session.id}`, LIMITS.upload);
     const body = await request.json();
-    const result = await requestUploadUrl({ lessonId: Number(params.id), fileName: body.fileName, contentType: body.contentType });
-    return NextResponse.json(result);
+    if (body.failed) return NextResponse.json(await reportUploadFailure(session, Number(params.id), body.reason));
+    return NextResponse.json(await requestUploadUrl(session, Number(params.id), body));
   } catch (e) { return errResponse(e); }
 }

@@ -1,170 +1,124 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import Icon from '@/components/Icon';
+import DataTable from '@/components/ui/DataTable';
+import Drawer from '@/components/ui/Drawer';
+import Dialog from '@/components/ui/Dialog';
+import { useAdminData, send, parseCsv } from '@/components/owner/useAdminData';
+import { taka, num, dateLabel } from '@/lib/copy';
 
+// Student directory from real records (accounts, enrollments, paid orders,
+// last learning activity) with a per-student record drawer.
 export default function StudentsTab() {
-  const { t, lang, students, addStudent, importStudentsCsv, showToast,
-    enrollments, courses, batches, attendance, certificates, payments, submissions } = useApp();
-  const [showAdd, setShowAdd] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [detail, setDetail] = useState(null); // student being viewed
+  const { lang, showToast } = useApp();
+  const en = lang === 'en';
+  const dir = useAdminData('/api/students?view=directory');
+  const [open, setOpen] = useState(null);
+  const [record, setRecord] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ name: '', phone: '' });
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef(null);
 
-  const handleImport = async () => {
-    const added = await importStudentsCsv();
-    showToast(
-      lang === 'bn' ? `CSV থেকে ${added.length} জন শিক্ষার্থী ইমপোর্ট হয়েছে` : `${added.length} students imported from CSV`
-    );
+  const view = async (s) => {
+    setOpen(s); setRecord(null);
+    try { setRecord(await send(`/api/students/${s.id}`, 'GET')); } catch { setRecord({ error: true }); }
+  };
+  const add = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    setBusy(true);
+    try { await send('/api/students', 'POST', { name: form.name.trim(), phone: form.phone.trim() }); setAdding(false); setForm({ name: '', phone: '' }); showToast(en ? 'Student added' : 'শিক্ষার্থী যোগ হয়েছে', 'success'); dir.reload(); }
+    catch { showToast(en ? 'Couldn’t add the student' : 'যোগ করা যায়নি', 'error'); } finally { setBusy(false); }
+  };
+  // Real CSV import: columns name, phone[, batch]
+  const importCsv = async (file) => {
+    if (!file) return;
+    try {
+      const rows = parseCsv(await file.text());
+      const header = rows[0].map((h) => h.trim().toLowerCase());
+      const hasHeader = header.includes('name') || header.includes('নাম');
+      const body = (hasHeader ? rows.slice(1) : rows).map((r) => ({ name: (r[0] || '').trim(), phone: (r[1] || '').trim(), batch: (r[2] || '').trim() || undefined })).filter((r) => r.name);
+      if (!body.length) throw new Error('empty');
+      await send('/api/students', 'POST', { import: body.slice(0, 500) });
+      showToast(en ? `${body.length} students imported` : `${num(lang, body.length)} জন শিক্ষার্থী ইমপোর্ট হয়েছে`, 'success');
+      dir.reload();
+    } catch { showToast(en ? 'Couldn’t read that CSV (name, phone, batch)' : 'CSV পড়া যায়নি (name, phone, batch কলাম দিন)', 'error'); }
   };
 
-  const handleAdd = async () => {
-    if (!newName.trim()) {
-      showToast(lang === 'bn' ? 'নাম লিখুন' : 'Enter a name');
-      return;
-    }
-    await addStudent({ name: newName, phone: newPhone });
-    setNewName('');
-    setNewPhone('');
-    setShowAdd(false);
-    showToast(lang === 'bn' ? 'শিক্ষার্থী যোগ হয়েছে ✓' : 'Student added ✓');
-  };
+  const columns = [
+    { key: 'name', label: en ? 'Student' : 'শিক্ষার্থী', render: (s) => <button type="button" className="link" style={{ border: 0, background: 'none', padding: 0, textDecoration: 'none', color: 'var(--ink)' }} onClick={() => view(s)}>{s.name}</button> },
+    { key: 'email', label: en ? 'Email / phone' : 'ইমেইল / ফোন', sort: (s) => s.email || s.phone, render: (s) => <span className="small">{s.email || '—'}{s.phone && <span className="muted"> · {s.phone}</span>}</span> },
+    { key: 'activeCourses', label: en ? 'Active courses' : 'চলমান কোর্স', align: 'right', render: (s) => num(lang, s.activeCourses) },
+    { key: 'paidTotal', label: en ? 'Paid' : 'পরিশোধ', align: 'right', render: (s) => (s.paidTotal ? taka(lang, s.paidTotal) : '—') },
+    { key: 'lastActivity', label: en ? 'Last learning' : 'সর্বশেষ শেখা', sort: (s) => s.lastActivity || '', render: (s) => <span className="small muted">{s.lastActivity ? dateLabel(lang, s.lastActivity) : '—'}</span> },
+    { key: 'joinedAt', label: en ? 'Joined' : 'যোগদান', render: (s) => <span className="small muted">{dateLabel(lang, s.joinedAt)}</span> }
+  ];
 
   return (
-    <div className="anim-in">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>{t.students}</h2>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn-outline" onClick={handleImport}>⇪ {t.importCsv}</button>
-          <button className="btn-primary" onClick={() => setShowAdd(true)}>+ {t.addStudent}</button>
-        </div>
+    <>
+      <div className="stat-tiles" style={{ marginBottom: 20 }}>
+        <div className="surface stat-tile"><div className="v">{num(lang, dir.data?.length || 0)}</div><div className="l">{en ? 'Students' : 'মোট শিক্ষার্থী'}</div></div>
+        <div className="surface stat-tile"><div className="v">{num(lang, (dir.data || []).filter((s) => s.activeCourses > 0).length)}</div><div className="l">{en ? 'With an active course' : 'চলমান কোর্সে আছেন'}</div></div>
+        <div className="surface stat-tile"><div className="v">{num(lang, (dir.data || []).filter((s) => s.paidOrders > 0).length)}</div><div className="l">{en ? 'Paying students' : 'পেমেন্ট করেছেন'}</div></div>
       </div>
+      <DataTable lang={lang} caption={en ? 'Students' : 'শিক্ষার্থী'} columns={columns} rows={dir.data || []} loading={dir.loading} error={dir.error} onRetry={dir.reload}
+        searchText={(s) => `${s.name} ${s.email || ''} ${s.phone || ''}`}
+        filters={[{ key: 'act', label: en ? 'Status' : 'অবস্থা', options: [{ value: 'active', label: en ? 'Active learners' : 'চলমান' }, { value: 'paid', label: en ? 'Paying' : 'পেমেন্টকারী' }, { value: 'none', label: en ? 'No course' : 'কোর্স নেই' }],
+          test: (s, v) => (v === 'active' ? s.activeCourses > 0 : v === 'paid' ? s.paidOrders > 0 : s.activeCourses === 0) }]}
+        initialSort={{ key: 'joinedAt', dir: 'desc' }}
+        toolbar={<>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => { importCsv(e.target.files?.[0]); e.target.value = ''; }} />
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileRef.current?.click()}><Icon name="upload" size={15} />{en ? 'Import CSV' : 'CSV ইমপোর্ট'}</button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setAdding(true)}><Icon name="plus" size={15} />{en ? 'Add student' : 'শিক্ষার্থী যোগ করুন'}</button>
+        </>}
+        rowActions={(s) => <button type="button" className="btn btn-ghost btn-sm" onClick={() => view(s)}>{en ? 'View' : 'বিস্তারিত'}</button>}
+      />
 
-      {showAdd && (
-        <div
-          style={{
-            background: '#fff9f3',
-            border: '1.5px solid #f2b28a',
-            borderRadius: 14,
-            padding: '18px 20px',
-            marginBottom: 18,
-            display: 'flex',
-            gap: 12,
-            flexWrap: 'wrap',
-            alignItems: 'flex-end'
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 180 }}>
-            <label className="label" style={{ fontSize: 12.5, marginBottom: 5 }}>{t.thName}</label>
-            <input className="input" style={{ padding: '10px 12px', fontSize: 14.5, background: '#fff' }} value={newName} onChange={(e) => setNewName(e.target.value)} />
-          </div>
-          <div style={{ flex: 1, minWidth: 160 }}>
-            <label className="label" style={{ fontSize: 12.5, marginBottom: 5 }}>{t.thPhone}</label>
-            <input className="input" style={{ padding: '10px 12px', fontSize: 14.5, background: '#fff' }} value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="01XXX-XXXXXX" />
-          </div>
-          <button className="btn-dark" onClick={handleAdd}>{t.save}</button>
-          <button
-            onClick={() => setShowAdd(false)}
-            style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 13, fontWeight: 600, padding: '11px 6px' }}
-          >
-            {t.cancel}
-          </button>
-        </div>
-      )}
+      <Dialog open={adding} onClose={() => setAdding(false)} title={en ? 'Add student' : 'শিক্ষার্থী যোগ করুন'} closeLabel={en ? 'Close' : 'বন্ধ করুন'}>
+        <form className="stack" onSubmit={add}>
+          <div className="field"><label htmlFor="ns-name">{en ? 'Name' : 'নাম'}</label><input id="ns-name" className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
+          <div className="field"><label htmlFor="ns-phone">{en ? 'Phone' : 'ফোন'}</label><input id="ns-phone" className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+          <div className="row" style={{ justifyContent: 'flex-end' }}><button type="submit" className="btn btn-primary" disabled={busy || !form.name.trim()}>{busy && <span className="spinner" aria-hidden="true" />}{en ? 'Add' : 'যোগ করুন'}</button></div>
+        </form>
+      </Dialog>
 
-      <div className="card" style={{ overflow: 'hidden' }}>
-        <div className="table-head-dark" style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 1.6fr 1fr', gap: 10, padding: '12px 20px' }}>
-          <div>{t.thName}</div><div>{t.thPhone}</div><div>{t.thBatch}</div><div>{t.thStatus}</div>
-        </div>
-        {students.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setDetail(s)}
-            className="row-line"
-            style={{ width: '100%', textAlign: 'left', border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', display: 'grid', gridTemplateColumns: '2fr 1.4fr 1.6fr 1fr', gap: 10, padding: '13px 20px', alignItems: 'center', fontSize: 14 }}
-          >
-            <div style={{ fontWeight: 600 }}>{s.name}</div>
-            <div className="mono" style={{ color: 'var(--muted)', fontSize: 12.5 }}>{s.phone}</div>
-            <div style={{ color: 'var(--muted)' }}>{s.batch}</div>
-            <div>
-              <span className={`chip ${s.paid ? 'chip-green' : 'chip-orange'}`}>{s.paid ? t.paid : t.notPurchased}</span>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {detail && (
-        <StudentDetail
-          student={detail} onClose={() => setDetail(null)} t={t}
-          data={{ enrollments, courses, batches, attendance, certificates, payments, submissions }}
-        />
-      )}
-    </div>
-  );
-}
-
-function StudentDetail({ student, onClose, t, data }) {
-  const { enrollments, courses, batches, attendance, certificates, payments, submissions } = data;
-  const sid = student.id;
-  const myEnr = enrollments.filter((e) => e.studentId === sid);
-  const myCourses = myEnr.map((e) => courses.find((c) => c.id === (e.courseId ?? batches.find((b) => b.id === e.batchId)?.courseId))).filter(Boolean);
-  const att = attendance.filter((a) => a.studentId === sid);
-  const attRate = att.length ? Math.round(att.filter((a) => a.present).length / att.length * 100) : null;
-  const myCerts = certificates.filter((c) => c.studentId === sid);
-  const myPays = payments.filter((p) => p.studentId === sid);
-  const graded = submissions.filter((x) => x.studentId === sid && x.status === 'graded').length;
-  const money = (n) => '৳' + Number(n || 0).toLocaleString('en-IN');
-
-  const Stat = ({ label, value }) => (
-    <div className="card" style={{ padding: '12px 14px' }}>
-      <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600 }}>{label}</div>
-      <div className="display" style={{ fontSize: 22, marginTop: 2 }}>{value}</div>
-    </div>
-  );
-
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'grid', placeItems: 'center', zIndex: 90, padding: 20 }}>
-      <div onClick={(e) => e.stopPropagation()} className="panel anim-in" style={{ width: 'min(600px,100%)', maxHeight: '88vh', overflow: 'auto', padding: 26 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-          <div className="avatar" style={{ width: 46, height: 46, background: 'var(--brand)', color: '#fff', fontSize: 18 }}>{student.name[0]}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 18 }}>{student.name}</div>
-            <div className="mono" style={{ fontSize: 12, color: 'var(--muted)' }}>{student.phone} · {student.batch}</div>
-          </div>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(120px,100%),1fr))', gap: 10, marginBottom: 18 }}>
-          <Stat label={t.myCourses} value={myCourses.length} />
-          <Stat label={t.mentorAttendance} value={attRate == null ? '—' : `${attRate}%`} />
-          <Stat label={t.sCertificates} value={myCerts.length} />
-          <Stat label={t.mentorGraded} value={graded} />
-        </div>
-
-        {myCourses.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{t.myCourses}</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {myCourses.map((c) => <span key={c.id} className="chip" style={{ border: '1.5px solid var(--line)' }}>{c.title}</span>)}
-            </div>
+      <Drawer open={!!open} onClose={() => setOpen(null)} title={open?.name || ''} closeLabel={en ? 'Close' : 'বন্ধ করুন'}>
+        {!record ? <div className="skeleton" style={{ height: 120 }} /> : record.error ? <p className="field-error">{en ? 'Couldn’t load.' : 'লোড করা যায়নি।'}</p> : (
+          <div className="stack" style={{ '--gap': '18px' }}>
+            <dl className="kv">
+              <div><dt>{en ? 'Email' : 'ইমেইল'}</dt><dd style={{ wordBreak: 'break-all' }}>{record.email || '—'}</dd></div>
+              <div><dt>{en ? 'Phone' : 'ফোন'}</dt><dd>{record.phone || '—'}</dd></div>
+              <div><dt>{en ? 'Joined' : 'যোগদান'}</dt><dd>{dateLabel(lang, record.joinedAt)}</dd></div>
+            </dl>
+            <section>
+              <h3 className="h4" style={{ marginBottom: 8 }}>{en ? 'Courses' : 'কোর্স'}</h3>
+              {!record.enrollments.length ? <p className="small muted">{en ? 'No enrollments.' : 'কোনো ভর্তি নেই।'}</p> : (
+                <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0, '--gap': '10px' }}>
+                  {record.enrollments.map((e) => (
+                    <li key={e.id} className="surface" style={{ padding: 12 }}>
+                      <div className="row between"><span className="strong">{e.title || `#${e.courseId}`}</span><span className={`badge ${e.status === 'active' ? 'badge-success' : ''}`}>{e.status === 'active' ? (en ? 'Active' : 'চলমান') : (en ? 'Cancelled' : 'বাতিল')}</span></div>
+                      <div className="progress progress-sm" style={{ margin: '8px 0 4px' }}><span style={{ width: `${e.lessons ? Math.round((e.done / e.lessons) * 100) : 0}%` }} /></div>
+                      <div className="xsmall muted">{num(lang, e.done)}/{num(lang, e.lessons)} · {e.source === 'order' ? (en ? 'Purchase' : 'ক্রয়') : e.source === 'batch' ? (en ? 'Batch' : 'ব্যাচ') : (en ? 'Manual' : 'ম্যানুয়াল')} · {dateLabel(lang, e.enrolledAt)}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+            <section>
+              <h3 className="h4" style={{ marginBottom: 8 }}>{en ? 'Orders' : 'অর্ডার'}</h3>
+              {!record.orders.length ? <p className="small muted">{en ? 'No orders.' : 'কোনো অর্ডার নেই।'}</p> : (
+                <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0, '--gap': '8px' }}>
+                  {record.orders.map((o) => <li key={o.id} className="row between small"><span>#{o.id} · {o.items || '—'}</span><span className="strong tabular">{taka(lang, o.amount)} · {o.status}</span></li>)}
+                </ul>
+              )}
+            </section>
           </div>
         )}
-
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{t.payHistory}</div>
-        {myPays.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--faint)' }}>{t.payNone}</div>
-        ) : (
-          <div className="card" style={{ overflow: 'hidden' }}>
-            {myPays.map((p) => (
-              <div key={p.id} className="row-line" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', fontSize: 13 }}>
-                <span className="mono" style={{ fontSize: 11, flex: 1 }}>{p.invoiceNo}</span>
-                <span className="display">{money(p.amount)}</span>
-                <span className={`chip ${p.status === 'refunded' ? '' : 'chip-green'}`} style={{ border: p.status === 'refunded' ? '1.5px solid var(--line)' : 'none' }}>{p.status}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      </Drawer>
+    </>
   );
 }
