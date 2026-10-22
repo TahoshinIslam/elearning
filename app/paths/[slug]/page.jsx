@@ -1,61 +1,70 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useApp } from '@/context/AppContext';
+import { notFound } from 'next/navigation';
 import SiteNav from '@/components/SiteNav';
+import SiteFooter from '@/components/site/SiteFooter';
+import CourseCard from '@/components/ui/CourseCard';
+import Icon from '@/components/Icon';
+import { getPublicPaths, getOwnedCourseIds } from '@/lib/catalogRepo';
+import { currentSession } from '@/lib/auth';
+import { getCopy } from '@/lib/lang';
+import { num, taka, duration } from '@/lib/copy';
+import { categoryLabel } from '@/lib/categoryLabel';
+import { abs } from '@/lib/seo';
 
-export default function PathDetailPage() {
-  const { t, api } = useApp();
-  const { slug } = useParams();
-  const router = useRouter();
-  const [path, setPath] = useState(undefined);
+export const dynamic = 'force-dynamic';
 
-  useEffect(() => {
-    api.getPaths().then((all) => setPath(all.find((p) => p.slug === slug) || null)).catch(() => setPath(null));
-  }, [slug]);
+async function findPath(slug) { return (await getPublicPaths()).find((p) => p.slug === slug) || null; }
 
+export async function generateMetadata({ params }) {
+  const path = await findPath(params.slug);
+  if (!path) return { robots: { index: false } };
+  return { title: path.title, description: path.description.slice(0, 180), alternates: { canonical: abs(`/paths/${path.slug}`) } };
+}
+
+export default async function PathPage({ params }) {
+  const { lang, c } = getCopy();
+  const path = await findPath(params.slug);
+  if (!path) notFound();
+  const owned = await getOwnedCourseIds(currentSession());
+  const first = path.courses[0];
   return (
     <>
       <SiteNav />
-      <div className="anim-in" style={{ maxWidth: 820, margin: '0 auto', padding: '24px 20px 90px' }}>
-        <Link href="/paths" style={{ color: 'var(--muted)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>{t.pathBack}</Link>
-
-        {path === undefined ? (
-          <div style={{ color: 'var(--faint)', textAlign: 'center', padding: 60 }}>…</div>
-        ) : path === null ? (
-          <div style={{ textAlign: 'center', padding: 60 }}>
-            <div style={{ fontSize: 40 }}>🔍</div>
-            <div style={{ fontSize: 20, fontWeight: 700, marginTop: 10 }}>{t.cdNotFound}</div>
-            <button className="btn-primary" style={{ marginTop: 18 }} onClick={() => router.push('/paths')}>{t.pathBack}</button>
+      <main id="main">
+        <section className="paths-hero">
+          <div className="container-wide">
+            <nav aria-label="Breadcrumb"><Link href="/paths" className="link small">← {c.allPaths}</Link></nav>
+            <h1 className="h1" style={{ marginTop: 10 }}>{path.title}</h1>
+            {path.description && <p className="lead" style={{ maxWidth: 760 }}>{path.description}</p>}
+            <p className="small muted" style={{ maxWidth: 760 }}>{c.pathsWhat}</p>
+            <div className="path-card-meta" style={{ marginTop: 12 }}>
+              <span><Icon name="compass" size={15} />{c.pathSteps(path.courses.length)}</span>
+              {path.lessonCount > 0 && <span><Icon name="list" size={15} />{c.lessonsN(path.lessonCount)}</span>}
+              {path.durationSeconds > 0 && <span><Icon name="clock" size={15} />{duration(lang, path.durationSeconds)}</span>}
+              {path.courses.length > 0 && <span><Icon name="receipt" size={15} />{c.pathTotal}: {path.price ? taka(lang, path.price) : c.free}</span>}
+            </div>
+            {first && <div style={{ marginTop: 18 }}><Link href={`/course/${first.slug}`} className="btn btn-primary btn-lg">{c.pathStart}<Icon name="arrowRight" size={18} /></Link></div>}
           </div>
-        ) : (
-          <div style={{ marginTop: 16 }}>
-            <h1 style={{ fontSize: 'clamp(24px,4vw,34px)', fontWeight: 700, margin: '0 0 8px' }}>{path.title}</h1>
-            <p style={{ fontSize: 16, color: '#44403c', lineHeight: 1.7, margin: '0 0 24px' }}>{path.description}</p>
-
-            {path.courses.length === 0 ? (
-              <div className="panel" style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>{t.pathNoCourses}</div>
-            ) : (
-              <div style={{ display: 'grid', gap: 14 }}>
-                {path.courses.map((c, i) => (
-                  <Link key={c.id} href={`/course/${c.slug}`} className="card" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 18px', textDecoration: 'none', color: 'inherit' }}>
-                    <div style={{ width: 34, height: 34, flex: 'none', borderRadius: 99, background: 'var(--brand-wash)', color: 'var(--brand-deep)', display: 'grid', placeItems: 'center', fontWeight: 700 }}>{i + 1}</div>
-                    <div className="placeholder-art" style={{ width: 90, height: 54, flex: 'none', fontSize: 10, borderRadius: 8 }}>{c.thumb}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--faint)' }}>{t.pathStep} {i + 1}</div>
-                      <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.35 }}>{c.title}</div>
-                      <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{c.instructor}</div>
+        </section>
+        <section className="home-section">
+          <div className="container-wide">
+            {path.courses.length ? (
+              <ol className="path-timeline">
+                {path.courses.map((course, i) => (
+                  <li key={course.id}>
+                    <span className="path-timeline-n" aria-hidden="true">{num(lang, i + 1)}</span>
+                    <div className="path-timeline-body">
+                      <p className="eyebrow">{c.pathStep(i + 1)}</p>
+                      <ul className="course-grid" data-n="1"><li><CourseCard course={course} lang={lang} owned={owned.has(course.id)} categoryLabel={categoryLabel(lang, course.category, course.categoryName)} /></li></ul>
                     </div>
-                    <span className="display" style={{ fontSize: 17 }}>{c.price === 0 ? t.cdFree : `৳${c.price}`}</span>
-                  </Link>
+                  </li>
                 ))}
-              </div>
-            )}
+              </ol>
+            ) : <div className="surface state"><p>{c.pathEmptySteps}</p></div>}
           </div>
-        )}
-      </div>
+        </section>
+      </main>
+      <SiteFooter />
     </>
   );
 }

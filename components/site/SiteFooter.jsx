@@ -10,11 +10,21 @@ export default async function SiteFooter() {
   const year = new Date().getFullYear();
   return (
     <footer className="site-footer">
-      <div className="container footer-grid">
+      <div className="container-wide footer-cta">
+        <div>
+          <h2 className="footer-cta-title">{c.footCtaT}</h2>
+          <p>{c.footCtaD}</p>
+        </div>
+        <div className="cluster" style={{ '--gap': '10px' }}>
+          <Link href="/courses" className="btn btn-primary btn-lg">{c.heroBrowse}</Link>
+          <Link href="/paths" className="btn btn-lg footer-cta-ghost">{c.navPaths}</Link>
+        </div>
+      </div>
+      <div className="container-wide footer-grid">
         <div className="stack" style={{ '--gap': '14px' }}>
           <Link href="/" className="brand" style={{ color: '#fff' }}><BrandMark /><span>Leo Learning</span></Link>
           <p style={{ maxWidth: 340, fontSize: 14.5, lineHeight: 1.6 }}>{c.footerTagline}</p>
-          <p className="small" style={{ color: '#A79D93' }}>{c.paymentsBy}</p>
+          <p className="footer-pay"><span className="badge" style={{ background: 'var(--bkash, #E2136E)', color: '#fff', borderColor: 'transparent' }}>bKash</span>{c.paymentsBy}</p>
         </div>
         <div>
           <h2 className="footer-title">{c.footLearn}</h2>
@@ -43,7 +53,7 @@ export default async function SiteFooter() {
           </ul>
         </div>
       </div>
-      <div className="container footer-bottom">
+      <div className="container-wide footer-bottom">
         <span>© {year} {settings.siteTitle || 'Leo Learning'}. {c.rights}</span>
       </div>
     </footer>

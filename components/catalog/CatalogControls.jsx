@@ -119,7 +119,7 @@ export function ActiveFilters({ lang, query, facets }) {
   const chips = [];
   if (query.q) chips.push({ key: 'q', label: `“${query.q}”` });
   if (query.category) chips.push({ key: 'category', label: facets.categories.find((x) => x.value === query.category)?.label || query.category });
-  if (query.class) chips.push({ key: 'class', label: query.class === 'other' ? c.otherCourses : facets.classes?.find((x) => x.value === query.class)?.name || query.class });
+  if (query.class) chips.push({ key: 'class', label: query.class === 'other' ? c.otherCourses : (facets.classesAll || facets.classes)?.find((x) => x.value === query.class)?.name || query.class });
   if (query.collection) chips.push({ key: 'collection', label: c[`${query.collection === 'featured' ? 'featured' : query.collection === 'new' ? 'new' : 'upcoming'}Section`] });
   if (query.level) chips.push({ key: 'level', label: query.level });
   if (query.language) chips.push({ key: 'language', label: query.language });

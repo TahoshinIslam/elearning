@@ -53,7 +53,9 @@ export default async function CoursesPage({ searchParams }) {
       <main id="main" className="container section-tight" style={{ paddingTop: 28 }}>
         <div className="page-head" style={{ marginBottom: 20 }}>
           <div>
-            <h1 className="h1">{query.q ? `“${query.q}”` : query.collection ? c[`${query.collection}Section`] : c.catalogTitle}</h1>
+            <h1 className="h1">{query.q ? `“${query.q}”` : query.collection ? c[`${query.collection}Section`]
+              : query.class ? (query.class === 'other' ? c.otherCourses : facets.classesAll.find((x) => x.value === query.class)?.name || c.catalogTitle)
+              : query.category ? (catOptions.find((x) => x.value === query.category)?.label || c.catalogTitle) : c.catalogTitle}</h1>
             <p aria-live="polite" id="results-count">{query.q ? c.resultsFor(total, query.q) : c.results(total)}</p>
           </div>
         </div>

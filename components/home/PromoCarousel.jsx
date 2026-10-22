@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Icon from '@/components/Icon';
 import { prefersReducedMotion } from '@/components/ui/motion';
+import CourseCover from '@/components/ui/CourseCover';
 import { copy, num, dateLabel } from '@/lib/copy';
 
 const INTERVAL = 6000;
@@ -76,6 +77,7 @@ export default function PromoCarousel({ slides, lang }) {
               <div className="promo-art" aria-hidden={s.imageUrl && s.imageAlt ? undefined : true}>
                 {s.imageUrl
                   ? <img src={s.imageUrl} alt={s.imageAlt || ''} loading={k === 0 ? 'eager' : 'lazy'} decoding="async" />
+                  : s.cover ? <CourseCover {...s.cover} size="lg" priority={k === 0} />
                   : <span className="promo-art-fallback"><Icon name="gift" size={56} /></span>}
               </div>
             </div>

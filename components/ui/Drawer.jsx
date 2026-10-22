@@ -8,7 +8,7 @@ import { usePresence } from '@/components/ui/motion';
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 // Side sheet with the same focus handling as Dialog (trap, Escape, restore).
-export default function Drawer({ open, onClose, title, children, footer, side = 'right', closeLabel = 'Close' }) {
+export default function Drawer({ open, onClose, title, children, footer, side = 'right', closeLabel = 'Close', initialFocus }) {
   const ref = useRef(null);
   const titleId = useId();
   const { mounted, state, onAnimationEnd } = usePresence(open);
@@ -19,6 +19,8 @@ export default function Drawer({ open, onClose, title, children, footer, side = 
     document.body.style.overflow = 'hidden';
     const node = ref.current;
     (node?.querySelector(FOCUSABLE) || node)?.focus({ preventScroll: true });
+    // Content may mount a frame later (e.g. inside Suspense); focus it then.
+    const raf = initialFocus ? requestAnimationFrame(() => node?.querySelector(initialFocus)?.focus({ preventScroll: true })) : 0;
     const onKey = (e) => {
       if (e.key === 'Escape') { onClose?.(); return; }
       if (e.key !== 'Tab' || !node) return;
@@ -30,11 +32,12 @@ export default function Drawer({ open, onClose, title, children, footer, side = 
     };
     document.addEventListener('keydown', onKey, true);
     return () => {
+      cancelAnimationFrame(raf);
       document.removeEventListener('keydown', onKey, true);
       document.body.style.overflow = overflow;
       previously?.focus?.({ preventScroll: true });
     };
-  }, [open, onClose]);
+  }, [open, onClose, initialFocus]);
   if (!mounted || typeof document === 'undefined') return null;
   const closing = state === 'closing';
   return createPortal(

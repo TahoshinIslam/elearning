@@ -33,6 +33,7 @@ export default function CourseCard({ course, lang = 'bn', owned = false, categor
           <Link href={`/course/${course.slug}`}>{course.title}</Link>
         </h3>
         {course.instructor && <p className="course-card-inst clamp-1">{course.instructor}</p>}
+        {course.tagline && <p className="course-card-tagline">{course.tagline}</p>}
         {course.upcoming ? (
           <p className="course-card-release"><Icon name="clock" size={14} />{course.releaseDate ? c.releaseOn(dateLabel(lang, course.releaseDate)) : c.tba}</p>
         ) : (

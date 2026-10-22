@@ -95,6 +95,7 @@ export default function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const returnTo = pathname && !['/login', '/register'].includes(pathname) ? `?returnTo=${encodeURIComponent(pathname)}` : '';
   const doLogout = async () => { await logout(); router.push('/'); router.refresh(); };
   const homeFor = auth ? (auth.role === 'student' ? '/student' : ROLE_HOME[auth.role] || '/') : null;
@@ -125,6 +126,9 @@ export default function SiteHeader() {
           <Suspense fallback={null}><SearchForm c={c} id="site-search" /></Suspense>
         </div>
         <div className="header-actions">
+          <button type="button" className="btn btn-ghost btn-icon mobile-only" onClick={() => setSearchOpen(true)} aria-label={c.search}>
+            <Icon name="search" size={20} />
+          </button>
           <button type="button" className="btn btn-ghost btn-sm desktop-only" onClick={toggleLang} aria-label={c.langSwitchLabel} lang={lang === 'bn' ? 'en' : 'bn'}>
             <Icon name="globe" size={16} />{c.langSwitch}
           </button>
@@ -168,6 +172,9 @@ export default function SiteHeader() {
             </div>
           )}
         </div>
+      </Drawer>
+      <Drawer open={searchOpen} onClose={() => setSearchOpen(false)} title={c.search} closeLabel={c.close} initialFocus="#mobile-search">
+        <Suspense fallback={null}><SearchForm c={c} id="mobile-search" autoFocus onDone={() => setSearchOpen(false)} /></Suspense>
       </Drawer>
       <CartDrawer />
     </header>

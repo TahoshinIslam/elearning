@@ -125,7 +125,8 @@ applies files once and records them in `schema_migrations`
 variable is set, so it never silently targets a remote database from `.env`.
 Migrations 028–030 are additive and idempotent (030 adds class levels,
 offers, campaigns, the course waitlist, review uniqueness and the course
-fields for featured order / first publication / upcoming release).
+fields for featured order / first publication / upcoming release; 031 adds
+classes ১–১২ as class levels and keeps SSC/HSC after them).
 
 ## Configuration still required for production
 
