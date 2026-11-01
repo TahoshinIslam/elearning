@@ -21,6 +21,16 @@ export default function SettingsTab() {
   const set = (k) => (e) => setS((x) => ({ ...x, [k]: e.target.value }));
   const dirty = s && JSON.stringify(s) !== base;
 
+  const pickLogo = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 40 * 1024) { showToast(en ? 'The logo must be under 40 KB.' : 'লোগো ৪০ কেবি-র কম হতে হবে।', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = () => setS((x) => ({ ...x, poweredByLogo: reader.result }));
+    reader.readAsDataURL(file);
+  };
+
   const save = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -47,6 +57,26 @@ export default function SettingsTab() {
             <div className="form-grid">
               <div className="field"><label htmlFor="set-phone">{t.setSupportPhone}</label><input id="set-phone" className="input" inputMode="tel" value={s.supportPhone || ''} onChange={set('supportPhone')} /></div>
               <div className="field"><label htmlFor="set-email">{t.setSupportEmail}</label><input id="set-email" className="input" type="email" value={s.supportEmail || ''} onChange={set('supportEmail')} /></div>
+            </div>
+          </section>
+
+          <section className="surface surface-pad stack" aria-labelledby="set-footer">
+            <h2 id="set-footer" className="h4">{en ? 'Footer' : 'ফুটার'}</h2>
+            <p className="small muted">{en ? '{year} becomes the current year and {name} the site title.' : '{year} বর্তমান বছর এবং {name} সাইটের নাম হয়ে দেখাবে।'}</p>
+            <div className="form-grid">
+              <div className="field"><label htmlFor="set-copy-bn">{en ? 'Copyright (Bangla)' : 'কপিরাইট (বাংলা)'}</label><input id="set-copy-bn" className="input" value={s.footerCopyrightBn || ''} onChange={set('footerCopyrightBn')} maxLength={200} /></div>
+              <div className="field"><label htmlFor="set-copy-en">{en ? 'Copyright (English)' : 'কপিরাইট (ইংরেজি)'}</label><input id="set-copy-en" className="input" value={s.footerCopyright || ''} onChange={set('footerCopyright')} maxLength={200} /></div>
+              <div className="field"><label htmlFor="set-pow-bn">{en ? 'Powered by text (Bangla)' : 'পাওয়ার্ড বাই লেখা (বাংলা)'}</label><input id="set-pow-bn" className="input" value={s.poweredByTextBn || ''} onChange={set('poweredByTextBn')} maxLength={60} /></div>
+              <div className="field"><label htmlFor="set-pow-en">{en ? 'Powered by text (English)' : 'পাওয়ার্ড বাই লেখা (ইংরেজি)'}</label><input id="set-pow-en" className="input" value={s.poweredByText || ''} onChange={set('poweredByText')} maxLength={60} /></div>
+            </div>
+            <div className="field"><label htmlFor="set-pow-url">{en ? 'Powered by link' : 'পাওয়ার্ড বাই লিংক'}</label><input id="set-pow-url" className="input" type="url" value={s.poweredByUrl || ''} onChange={set('poweredByUrl')} /></div>
+            <div className="field">
+              <label htmlFor="set-pow-logo">{en ? 'Powered by logo' : 'পাওয়ার্ড বাই লোগো'}</label>
+              {/* The footer is dark: the preview sits on the same colour. eslint-disable-next-line @next/next/no-img-element */}
+              {s.poweredByLogo ? <img src={s.poweredByLogo} alt="" style={{ height: 40, width: 'auto', padding: 8, borderRadius: 8, background: '#1C1917' }} /> : null}
+              <input id="set-pow-logo" type="file" accept="image/png,image/webp" onChange={pickLogo} />
+              <p className="help">{en ? 'PNG or WebP with a transparent background and light text, under 40 KB.' : 'স্বচ্ছ ব্যাকগ্রাউন্ড ও হালকা রঙের লেখাসহ PNG বা WebP, ৪০ কেবি-র কম।'}</p>
+              {s.poweredByLogo ? <button type="button" className="btn btn-sm" style={{ width: 'fit-content' }} onClick={() => setS((x) => ({ ...x, poweredByLogo: '' }))}>{en ? 'Remove logo' : 'লোগো সরান'}</button> : null}
             </div>
           </section>
 

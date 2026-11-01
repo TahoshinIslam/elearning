@@ -5,9 +5,21 @@ import { getCopy } from '@/lib/lang';
 
 // Server component: support contact comes from the admin-managed site settings.
 export default async function SiteFooter() {
-  const { c } = getCopy();
+  const { c, lang } = getCopy();
   const settings = await getSettings().catch(() => ({}));
   const year = new Date().getFullYear();
+  const bn = lang !== 'en';
+  const copyright = ((bn && settings.footerCopyrightBn) || settings.footerCopyright || `© {year} {name}. ${c.rights}`)
+    .replaceAll('{year}', year)
+    .replaceAll('{name}', settings.siteTitle || 'Leo Learning');
+  const poweredText = (bn && settings.poweredByTextBn) || settings.poweredByText;
+  const powered = (
+    <>
+      {poweredText}
+      {/* eslint-disable-next-line @next/next/no-img-element -- a data URI from the site settings */}
+      {settings.poweredByLogo ? <img src={settings.poweredByLogo} alt="Leotech" height={32} /> : null}
+    </>
+  );
   return (
     <footer className="site-footer">
       <div className="container-wide footer-cta">
@@ -54,7 +66,12 @@ export default async function SiteFooter() {
         </div>
       </div>
       <div className="container-wide footer-bottom">
-        <span>© {year} {settings.siteTitle || 'Leo Learning'}. {c.rights}</span>
+        <span>{copyright}</span>
+        {poweredText || settings.poweredByLogo ? (
+          settings.poweredByUrl
+            ? <a className="footer-powered" href={settings.poweredByUrl} target="_blank" rel="noopener noreferrer">{powered}</a>
+            : <span className="footer-powered">{powered}</span>
+        ) : null}
       </div>
     </footer>
   );
