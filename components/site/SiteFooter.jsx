@@ -66,12 +66,12 @@ export default async function SiteFooter() {
         </div>
       </div>
       <div className="container-wide footer-bottom">
-        <span>{copyright}</span>
         {poweredText || settings.poweredByLogo ? (
           settings.poweredByUrl
             ? <a className="footer-powered" href={settings.poweredByUrl} target="_blank" rel="noopener noreferrer">{powered}</a>
             : <span className="footer-powered">{powered}</span>
         ) : null}
+        <span>{copyright}</span>
       </div>
     </footer>
   );
