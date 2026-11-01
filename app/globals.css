@@ -400,7 +400,9 @@ body:has(.shell) .site-header .container { max-width: none; padding-inline: var(
 @media (min-width: 768px) { .footer-grid { grid-template-columns: 1.4fr repeat(3, 1fr); } }
 .footer-title { color: #fff; font-family: var(--font-display); font-weight: 600; font-size: 15px; margin-bottom: 12px; }
 .footer-links { display: grid; gap: 9px; font-size: 14.5px; list-style: none; padding: 0; margin: 0; }
-.footer-bottom { border-top: 1px solid #36302A; padding-block: var(--s5); font-size: 13.5px; color: #A79D93; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
+.footer-bottom { border-top: 1px solid #36302A; padding-block: var(--s5); font-size: 13.5px; color: #A79D93; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
+.footer-powered { display: inline-flex; align-items: center; gap: 10px; }
+.footer-powered img { display: block; height: 32px; width: auto; background: transparent; }
 
 /* ==========================================================================
    Course discovery
