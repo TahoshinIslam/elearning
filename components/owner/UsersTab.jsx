@@ -14,7 +14,7 @@ const fieldStyle = {
 export default function UsersTab() {
   const { t, api, showToast, auth } = useApp();
   const [users, setUsers] = useState([]);
-  const [f, setF] = useState({ name: '', email: '', password: '', sections: ['dash', 'classes', 'attendance', 'submissions', 'quizzes'] });
+  const [f, setF] = useState({ name: '', email: '', password: '', sections: ['classes', 'attendance', 'submissions', 'quizzes'] });
 
   // label for a dashboard section key
   const secLabel = (k) => ({ dash: t.dash, students: t.students, classes: t.tClasses, attendance: t.tAttendance, submissions: t.tSubmissions, quizzes: t.tQuizzes, announce: t.announce }[k] || k);
@@ -30,7 +30,7 @@ export default function UsersTab() {
     if (!f.name.trim() || !f.email.trim() || f.password.length < 6) { showToast(t.staffInvalid); return; }
     try {
       await api.createStaff({ name: f.name.trim(), email: f.email.trim(), password: f.password, sections: f.sections });
-      setF({ name: '', email: '', password: '', sections: ['dash', 'classes', 'attendance', 'submissions', 'quizzes'] });
+      setF({ name: '', email: '', password: '', sections: ['classes', 'attendance', 'submissions', 'quizzes'] });
       await load();
       showToast(t.staffCreated);
     } catch (e) { showToast(e?.data?.error === 'email_taken' ? t.emailTaken : t.errGeneric); }

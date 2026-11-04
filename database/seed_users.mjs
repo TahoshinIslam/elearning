@@ -10,7 +10,7 @@ function hashPassword(password) {
   return `scrypt$${salt}$${hash}`;
 }
 
-const STAFF_ALL = 'dash,students,classes,attendance,submissions,quizzes,announce';
+const STAFF_ALL = 'students,classes,attendance,submissions,quizzes,announce';
 const DEMO = [
   { name: 'তানভীর আহমেদ',   email: 'student@leolearning.app',    role: 'student',    tenant_id: 1, student_id: 1 },
   { name: 'আবরার হায়দার',   email: 'teacher@leolearning.app',    role: 'teacher',    tenant_id: 1, teacher_id: 1, sections: STAFF_ALL },
