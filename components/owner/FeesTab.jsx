@@ -28,7 +28,7 @@ export default function FeesTab() {
 
   const pill = (on) => ({
     border: 'none',
-    borderRadius: 99,
+    borderRadius: 0,
     padding: '7px 15px',
     fontSize: 12.5,
     fontWeight: 700,
@@ -49,7 +49,7 @@ export default function FeesTab() {
     <div className="anim-in">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>{t.fees}</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1.5px solid var(--line)', borderRadius: 99, padding: '5px 6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1.5px solid var(--line)', borderRadius: 0, padding: '5px 6px' }}>
           <button style={pill(payModel === 'A')} onClick={() => setPayModel('A')}>{t.modelA}</button>
           <button style={pill(payModel === 'B')} onClick={() => setPayModel('B')}>{t.modelB}</button>
         </div>
@@ -65,7 +65,7 @@ export default function FeesTab() {
             </>
           )}
         </div>
-        <div style={{ marginTop: 14, fontSize: 13, color: 'var(--muted)', background: 'var(--paper)', borderRadius: 10, padding: '10px 14px', lineHeight: 1.6 }}>
+        <div style={{ marginTop: 14, fontSize: 13, color: 'var(--muted)', background: 'var(--paper)', borderRadius: 0, padding: '10px 14px', lineHeight: 1.6 }}>
           {payModel === 'A' ? t.feeNoteA : t.feeNoteB}
         </div>
       </div>
@@ -81,7 +81,7 @@ export default function FeesTab() {
             {s.paid ? (
               <span className="chip chip-green">✓ {t.paid}</span>
             ) : (
-              <button className="btn-dark" style={{ borderRadius: 9, padding: '8px 16px', fontSize: 12.5 }} onClick={() => handleMarkPaid(s)}>
+              <button className="btn-dark" style={{ borderRadius: 0, padding: '8px 16px', fontSize: 12.5 }} onClick={() => handleMarkPaid(s)}>
                 {t.markPaid}
               </button>
             )}

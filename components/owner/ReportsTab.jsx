@@ -35,7 +35,7 @@ export default function ReportsTab() {
     <div className="anim-in">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
         <div style={{ fontSize: 22, fontWeight: 700 }}>{t.reports}</div>
-        <a href={`/api/reports/export?type=${type}`} className="btn-dark" style={{ borderRadius: 10, fontSize: 13.5, textDecoration: 'none', padding: '9px 16px' }}>
+        <a href={`/api/reports/export?type=${type}`} className="btn-dark" style={{ borderRadius: 0, fontSize: 13.5, textDecoration: 'none', padding: '9px 16px' }}>
           {t.reportExport}
         </a>
       </div>

@@ -7,7 +7,7 @@ import { ROLES, ROLE_PERMISSIONS, STAFF_SECTIONS } from '@/lib/rbac';
 const ROLE_CHIP = { superadmin: 'chip-orange', owner: 'chip-orange', teacher: 'chip-green', student: '' };
 
 const fieldStyle = {
-  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 8,
+  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 0,
   padding: '9px 11px', fontSize: 13.5, fontFamily: 'inherit', width: '100%'
 };
 
@@ -68,7 +68,7 @@ export default function UsersTab() {
             );
           })}
         </div>
-        <button className="btn-primary" style={{ borderRadius: 9 }} onClick={createStaff}>{t.staffCreateBtn}</button>
+        <button className="btn-primary" style={{ borderRadius: 0 }} onClick={createStaff}>{t.staffCreateBtn}</button>
       </div>
 
       <div className="card" style={{ overflow: 'auto' }}>
@@ -84,7 +84,7 @@ export default function UsersTab() {
                 <div className="mono" style={{ fontSize: 12, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</div>
                 <div>
                   <select value={u.role} disabled={self} onChange={(e) => changeRole(u, e.target.value)}
-                    style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '5px 8px', fontSize: 12.5, fontFamily: 'inherit', background: '#fff' }}>
+                    style={{ border: '1px solid var(--line)', borderRadius: 0, padding: '5px 8px', fontSize: 12.5, fontFamily: 'inherit', background: '#fff' }}>
                     {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
@@ -127,7 +127,7 @@ export default function UsersTab() {
             <div style={{ fontWeight: 700, textTransform: 'capitalize', marginBottom: 8 }}>{r}</div>
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
               {(ROLE_PERMISSIONS[r] || []).map((p) => (
-                <span key={p} className="mono" style={{ fontSize: 10.5, fontWeight: 600, background: p === '*:*' ? 'var(--brand-wash)' : 'var(--line-softer)', color: p === '*:*' ? 'var(--brand-deep)' : 'var(--ink-soft)', borderRadius: 6, padding: '2px 7px' }}>{p}</span>
+                <span key={p} className="mono" style={{ fontSize: 10.5, fontWeight: 600, background: p === '*:*' ? 'var(--brand-wash)' : 'var(--line-softer)', color: p === '*:*' ? 'var(--brand-deep)' : 'var(--ink-soft)', borderRadius: 0, padding: '2px 7px' }}>{p}</span>
               ))}
             </div>
           </div>

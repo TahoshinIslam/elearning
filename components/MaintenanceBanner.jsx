@@ -19,13 +19,13 @@ export default function MaintenanceBanner() {
   if (auth && ['owner', 'superadmin'].includes(auth.role)) {
     // admins get a slim reminder instead of the full block
     return (
-      <div style={{ background: '#7c2d12', color: '#fff', textAlign: 'center', padding: '8px 16px', fontSize: 13, fontWeight: 700 }}>
+      <div style={{ background: '#063A2F', color: '#fff', textAlign: 'center', padding: '8px 16px', fontSize: 13, fontWeight: 700 }}>
         🚧 Maintenance mode is ON — visitors see the maintenance screen.
       </div>
     );
   }
   return (
-    <div style={{ background: '#7c2d12', color: '#fff', textAlign: 'center', padding: '10px 16px', fontSize: 14, fontWeight: 700 }}>
+    <div style={{ background: '#063A2F', color: '#fff', textAlign: 'center', padding: '10px 16px', fontSize: 14, fontWeight: 700 }}>
       🚧 {settings.maintenanceMsg || 'Under maintenance'}
     </div>
   );

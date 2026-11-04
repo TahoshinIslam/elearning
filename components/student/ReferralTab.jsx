@@ -21,12 +21,12 @@ export default function ReferralTab() {
         <label className="label">{t.referralYourCode}</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           <input className="input mono" readOnly value={data.code} style={{ fontWeight: 700 }} />
-          <button className="btn-primary" style={{ borderRadius: 10 }} onClick={() => copy(data.code)}>{t.referralCopy}</button>
+          <button className="btn-primary" style={{ borderRadius: 0 }} onClick={() => copy(data.code)}>{t.referralCopy}</button>
         </div>
         <label className="label">{t.referralLink}</label>
         <div style={{ display: 'flex', gap: 8 }}>
           <input className="input" readOnly value={link} style={{ fontSize: 12.5 }} />
-          <button className="btn-dark" style={{ borderRadius: 10 }} onClick={() => copy(link)}>{t.referralCopy}</button>
+          <button className="btn-dark" style={{ borderRadius: 0 }} onClick={() => copy(link)}>{t.referralCopy}</button>
         </div>
       </div>
 

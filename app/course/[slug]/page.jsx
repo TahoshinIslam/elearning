@@ -100,8 +100,8 @@ export default async function CoursePage({ params }) {
                     : <span><Icon name="star" size={16} />{c.noReviewsYet}</span>}
                   {!upcoming && social > 0 && <span><Icon name="users" size={16} />{course.free ? c.studentsN(social) : c.purchasersN(social)}</span>}
                   {upcoming && <span><Icon name="clock" size={16} />{course.releaseDate ? c.releaseOn(dateLabel(lang, course.releaseDate)) : c.tba}</span>}
-                  {course.className && <span><Icon name="book" size={16} /><Link className="link" style={{ color: '#FDBA74' }} href={`/courses?class=${encodeURIComponent(course.classSlug)}`}>{course.className}</Link></span>}
-                  {course.instructor && <span><Icon name="user" size={16} />{course.instructorProfile ? <Link className="link" style={{ color: '#FDBA74' }} href={`/instructor/${course.instructorProfile.id}`}>{course.instructor}</Link> : course.instructor}</span>}
+                  {course.className && <span><Icon name="book" size={16} /><Link className="link" style={{ color: '#FFD84D' }} href={`/courses?class=${encodeURIComponent(course.classSlug)}`}>{course.className}</Link></span>}
+                  {course.instructor && <span><Icon name="user" size={16} />{course.instructorProfile ? <Link className="link" style={{ color: '#FFD84D' }} href={`/instructor/${course.instructorProfile.id}`}>{course.instructor}</Link> : course.instructor}</span>}
                   {course.language && <span><Icon name="language" size={16} />{course.language}</span>}
                   {course.level && course.level !== course.className && <span><Icon name="bar" size={16} />{course.level}</span>}
                   {course.updatedAt && <span><Icon name="clock" size={16} />{c.updated} {dateLabel(lang, course.updatedAt)}</span>}

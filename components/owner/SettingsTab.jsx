@@ -73,7 +73,7 @@ export default function SettingsTab() {
             <div className="field">
               <label htmlFor="set-pow-logo">{en ? 'Powered by logo' : 'পাওয়ার্ড বাই লোগো'}</label>
               {/* The footer is dark: the preview sits on the same colour. eslint-disable-next-line @next/next/no-img-element */}
-              {s.poweredByLogo ? <img src={s.poweredByLogo} alt="" style={{ height: 40, width: 'auto', padding: 8, borderRadius: 8, background: '#1C1917' }} /> : null}
+              {s.poweredByLogo ? <img src={s.poweredByLogo} alt="" style={{ height: 40, width: 'auto', padding: 8, borderRadius: 0, background: '#1C1917' }} /> : null}
               <input id="set-pow-logo" type="file" accept="image/png,image/webp" onChange={pickLogo} />
               <p className="help">{en ? 'PNG or WebP with a transparent background and light text, under 40 KB.' : 'স্বচ্ছ ব্যাকগ্রাউন্ড ও হালকা রঙের লেখাসহ PNG বা WebP, ৪০ কেবি-র কম।'}</p>
               {s.poweredByLogo ? <button type="button" className="btn btn-sm" style={{ width: 'fit-content' }} onClick={() => setS((x) => ({ ...x, poweredByLogo: '' }))}>{en ? 'Remove logo' : 'লোগো সরান'}</button> : null}

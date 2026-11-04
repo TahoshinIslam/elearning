@@ -1,14 +1,14 @@
 // Course imagery. Uses the uploaded thumbnail (made to IMAGE_SPECS.courseCard,
 // 4:3) when there is one; otherwise a generated cover in one of six vivid
-// tones (stable per subject) with the brand's "mane" arcs — so the catalog
+// flat bright tones (stable per subject) with black line patterns — so the catalog
 // never shows broken or stock art.
 const TONES = [
-  { bg: '#C2410C', bg2: '#F59E0B', fg: '#FFFFFF', ac: '#FFE7C2', tint: '#FFF4EA' }, // sunrise
-  { bg: '#0F766E', bg2: '#2DD4BF', fg: '#FFFFFF', ac: '#CCFBF1', tint: '#EBFAF7' }, // lagoon
-  { bg: '#4338CA', bg2: '#A78BFA', fg: '#FFFFFF', ac: '#E0E7FF', tint: '#F1F0FF' }, // violet
-  { bg: '#15803D', bg2: '#A3E635', fg: '#FFFFFF', ac: '#ECFCCB', tint: '#F0FAEA' }, // meadow
-  { bg: '#BE185D', bg2: '#FB7185', fg: '#FFFFFF', ac: '#FFE4E6', tint: '#FFF0F3' }, // berry
-  { bg: '#1D4ED8', bg2: '#38BDF8', fg: '#FFFFFF', ac: '#DBEAFE', tint: '#EEF5FF' }  // sky
+  { bg: '#FFD84D', bg2: '#FFD84D', fg: '#0A0A0A', ac: '#0A0A0A', tint: '#FFF3B8' }, // yellow
+  { bg: '#4DE3F4', bg2: '#4DE3F4', fg: '#0A0A0A', ac: '#0A0A0A', tint: '#CFF7FC' }, // cyan
+  { bg: '#B69CFF', bg2: '#B69CFF', fg: '#0A0A0A', ac: '#0A0A0A', tint: '#E9E1FF' }, // violet
+  { bg: '#6EEB83', bg2: '#6EEB83', fg: '#0A0A0A', ac: '#0A0A0A', tint: '#D5FADC' }, // lime
+  { bg: '#FF7AA2', bg2: '#FF7AA2', fg: '#0A0A0A', ac: '#0A0A0A', tint: '#FFDCE6' }, // pink
+  { bg: '#FF9F43', bg2: '#FF9F43', fg: '#0A0A0A', ac: '#0A0A0A', tint: '#FFE3C7' }  // orange
 ];
 
 function hash(s) {
@@ -24,9 +24,9 @@ function Pattern({ variant, tone }) {
     return (
       <svg className="cover-pattern" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax slice" aria-hidden="true" focusable="false">
         {[150, 118, 86, 54].map((r, i) => (
-          <circle key={r} cx="300" cy="190" r={r} fill="none" stroke={tone.ac} strokeOpacity={0.18 + i * 0.12} strokeWidth="14" />
+          <circle key={r} cx="300" cy="190" r={r} fill="none" stroke={tone.ac} strokeOpacity={0.10 + i * 0.07} strokeWidth="10" />
         ))}
-        <circle cx="300" cy="190" r="22" fill={tone.ac} fillOpacity=".85" />
+        <circle cx="300" cy="190" r="22" fill={tone.ac} fillOpacity=".9" />
       </svg>
     );
   }
@@ -34,7 +34,7 @@ function Pattern({ variant, tone }) {
     return (
       <svg className="cover-pattern" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
         {Array.from({ length: 7 }).map((_, i) => (
-          <rect key={i} x={170 + i * 22} y="-40" width="10" height="280" transform={`rotate(24 ${170 + i * 22} 90)`} fill={tone.ac} fillOpacity={0.1 + i * 0.07} />
+          <rect key={i} x={170 + i * 22} y="-40" width="10" height="280" transform={`rotate(24 ${170 + i * 22} 90)`} fill={tone.ac} fillOpacity={0.06 + i * 0.04} />
         ))}
       </svg>
     );
@@ -42,13 +42,13 @@ function Pattern({ variant, tone }) {
   return (
     <svg className="cover-pattern" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax slice" aria-hidden="true" focusable="false">
       {Array.from({ length: 6 }).map((_, r) => Array.from({ length: 8 }).map((__, c) => (
-        <circle key={`${r}-${c}`} cx={168 + c * 20} cy={24 + r * 28} r={3 + ((r + c) % 3)} fill={tone.ac} fillOpacity={0.15 + ((r * c) % 5) * 0.12} />
+        <circle key={`${r}-${c}`} cx={168 + c * 20} cy={24 + r * 28} r={3 + ((r + c) % 3)} fill={tone.ac} fillOpacity={0.12 + ((r * c) % 5) * 0.08} />
       )))}
     </svg>
   );
 }
 
-export default function CourseCover({ title, category, kicker, thumbnailUrl, id = 0, size = 'md', priority = false }) {
+export default function CourseCover({ title, category, kicker, thumbnailUrl, id = 0, size = 'md', priority = false, showTitle = true }) {
   const tone = toneFor(category || title);
   const cls = `cover ${size === 'lg' ? 'cover-lg' : size === 'sm' ? 'cover-sm' : ''}`;
   if (thumbnailUrl) {
@@ -63,7 +63,7 @@ export default function CourseCover({ title, category, kicker, thumbnailUrl, id 
       <div className="cover-art">
         <Pattern variant={Number(id) % 3} tone={tone} />
         <span className="cover-kicker">{kicker || ''}</span>
-        <span className="cover-title">{title}</span>
+        {showTitle ? <span className="cover-title">{title}</span> : <span className="cover-glyph" aria-hidden="true">{String(kicker || title || '').trim().charAt(0)}</span>}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { useApp } from '@/context/AppContext';
 const inputStyle = {
   border: '1px solid var(--field-line)',
   background: 'var(--field)',
-  borderRadius: 8,
+  borderRadius: 0,
   padding: '9px 12px',
   fontSize: 14,
   fontFamily: 'inherit'

@@ -7,7 +7,6 @@ import Icon from '@/components/Icon';
 import Reveal from '@/components/ui/Reveal';
 import PromoCarousel from '@/components/home/PromoCarousel';
 import PromoPopup from '@/components/home/PromoPopup';
-import Typewriter from '@/components/home/Typewriter';
 import PathCard from '@/components/ui/PathCard';
 import { getFeaturedCourses, getNewArrivals, getUpcomingCourses, getPopularCourses, getCatalogFacets, getPlatformStats, getOwnedCourseIds, getFeaturedInstructors, getCoursesBySubjects, getClassLevels, getPublicPaths, catalogContext } from '@/lib/catalogRepo';
 import { getActiveCampaigns } from '@/lib/campaignRepo';
@@ -63,6 +62,12 @@ export default async function HomePage() {
   const carousel = slides.length ? slides : courseSlides;
   // Three hero tiles: featured first, topped up from popular and newest.
   const mosaic = [...featured, ...popular, ...fresh].filter((x, i, all) => all.findIndex((y) => y.id === x.id) === i).slice(0, 3);
+  // Headline: the last clause (after "—" or the last comma) becomes the
+  // tilted highlight sticker, e.g. "… — [নিজের গতিতে।]".
+  const heroTitle = String(hero.title || c.heroTitle || '').trim();
+  const cut = heroTitle.lastIndexOf('—') >= 0 ? heroTitle.lastIndexOf('—') : heroTitle.lastIndexOf(',');
+  const headMain = cut > 0 ? heroTitle.slice(0, cut).replace(/[\s,—]+$/, '') : heroTitle;
+  const headMark = cut > 0 ? heroTitle.slice(cut + 1).trim() : '';
   const statItems = [
     [stats.courses, c.statCourses], [stats.lessons, c.statLessons],
     stats.learners > 0 ? [stats.learners, c.statLearners] : null,
@@ -78,15 +83,27 @@ export default async function HomePage() {
     <>
       <SiteNav />
       <main id="main" className="home">
-        {carousel.length > 0 && (
-          <div className="container-wide promo-section"><PromoCarousel slides={carousel} lang={lang} /></div>
-        )}
         <section className="hero home-hero">
           <div className="container-wide hero-grid">
             <div className="stack hero-seq" style={{ '--gap': '24px' }}>
               <span className="eyebrow" style={{ '--i': 0 }}>{hero.badge || c.heroEyebrow}</span>
-              <Typewriter text={hero.title || c.heroTitle} className="display-1" />
-              <div className="cluster" style={{ '--gap': '12px', '--i': 2 }}>
+              <h1 className="display-1" style={{ '--i': 0 }}>
+                {headMain}{headMark && <>{' '}<span className="sticker">{headMark}</span></>}
+              </h1>
+              <form role="search" action="/courses" method="get" className="hero-search" style={{ '--i': 1 }}>
+                <label htmlFor="hero-q" className="sr-only">{c.search}</label>
+                <Icon name="search" size={20} className="hero-search-icon" />
+                <input id="hero-q" name="q" type="search" className="input" placeholder={c.searchPlaceholder} autoComplete="off" enterKeyHint="search" />
+                <button type="submit" className="btn btn-primary btn-lg">{c.search}</button>
+              </form>
+              {facets.categories.length > 0 && (
+                <ul className="hero-chips" style={{ '--i': 2 }} aria-label={c.subjectSection}>
+                  {facets.categories.slice(0, 5).map((cat) => (
+                    <li key={cat.value}><Link href={`/courses?category=${encodeURIComponent(cat.value)}`} className="chip-link">{categoryLabel(lang, cat.value, cat.name)}</Link></li>
+                  ))}
+                </ul>
+              )}
+              <div className="cluster" style={{ '--gap': '12px', '--i': 3 }}>
                 <Link href="/courses" className="btn btn-primary btn-lg">{c.heroBrowse}<Icon name="arrowRight" size={18} /></Link>
                 {facets.price.free > 0 && <Link href="/courses?price=free" className="btn btn-secondary btn-lg">{c.heroFree}</Link>}
               </div>
@@ -109,6 +126,22 @@ export default async function HomePage() {
             )}
           </div>
         </section>
+
+        {facets.categories.length > 0 && (
+          <div className="ticker" aria-hidden="true">
+            <div className="ticker-track">
+              {[0, 1].map((k) => (
+                <div key={k} style={{ display: 'flex' }}>
+                  {[...facets.categories.map((cat) => categoryLabel(lang, cat.value, cat.name)), ...statItems.map(([n, l]) => `${num(lang, n)} ${l}`)].concat(facets.categories.length < 4 ? facets.categories.map((cat) => categoryLabel(lang, cat.value, cat.name)) : []).map((t, i) => <span key={`${k}-${i}`}>{t}</span>)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {carousel.length > 0 && (
+          <div className="container-wide promo-section"><PromoCarousel slides={carousel} lang={lang} /></div>
+        )}
 
         {facets.categories.length > 0 && (
           <section className="home-section" aria-labelledby="subj-title">
@@ -175,7 +208,7 @@ export default async function HomePage() {
                 })}
                 {facets.nonClassCount > 0 && (
                   <li>
-                    <Link href="/courses?class=other" className="class-tile" style={{ '--tone': '#44403C', '--tone-2': '#A8A29E' }}>
+                    <Link href="/courses?class=other" className="class-tile" style={{ '--tone': '#B69CFF', '--tone-2': '#B69CFF' }}>
                       <span className="class-num" aria-hidden="true"><Icon name="grid" size={22} /></span>
                       <span className="class-name">{c.otherCourses}</span>
                       <span className="class-count">{c.coursesN(facets.nonClassCount)}</span>
@@ -232,7 +265,7 @@ export default async function HomePage() {
           <Reveal className="container-wide">
             {sectionHead('how-title', c.howTitle, null, null, 'zap')}
             <ol className="how-grid">
-              {[['eye', c.how1T, c.how1D, '#C2410C', '#F59E0B'], ['shield', c.how2T, c.how2D, '#0F766E', '#2DD4BF'], ['refresh', c.how3T, c.how3D, '#4338CA', '#A78BFA']].map(([icon, t, d, a1, a2], i) => (
+              {[['eye', c.how1T, c.how1D, '#FFD84D', '#FFD84D'], ['shield', c.how2T, c.how2D, '#4DE3F4', '#4DE3F4'], ['refresh', c.how3T, c.how3D, '#FF7AA2', '#FF7AA2']].map(([icon, t, d, a1, a2], i) => (
                 <li key={t} className="how-step" style={{ '--tone': a1, '--tone-2': a2 }}>
                   <span className="how-n" aria-hidden="true">{num(lang, i + 1)}</span>
                   <span className="how-icon" aria-hidden="true"><Icon name={icon} size={22} /></span>

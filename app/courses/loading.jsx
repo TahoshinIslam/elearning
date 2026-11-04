@@ -1,16 +1,19 @@
+import { HeaderSkeleton, CardGridSkeleton } from '@/components/ui/Skeletons';
+
 export default function Loading() {
   return (
-    <main id="main" className="container section-tight" style={{ paddingTop: 92 }} aria-busy="true">
-      <div className="skeleton" style={{ height: 36, width: 260, marginBottom: 28 }} />
-      <div className="grid-cards">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="course-card">
-            <div className="skeleton" style={{ aspectRatio: '16/9' }} />
-            <div className="skeleton" style={{ height: 18, width: '80%' }} />
-            <div className="skeleton" style={{ height: 14, width: '50%' }} />
+    <>
+      <HeaderSkeleton />
+      <main id="main" className="container section-tight" style={{ paddingTop: 40 }} aria-busy="true">
+        <div className="skeleton" style={{ height: 44, width: 280, marginBottom: 10 }} />
+        <div className="skeleton sk-cyan" style={{ height: 16, width: 180, marginBottom: 28 }} />
+        <div className="catalog-layout">
+          <div className="sk-card desktop-only" style={{ display: 'grid', alignSelf: 'start' }}>
+            {Array.from({ length: 8 }).map((_, i) => <div key={i} className={`skeleton ${i % 4 === 0 ? 'sk-yellow' : ''}`} style={{ height: i % 4 === 0 ? 24 : 18, margin: 0 }} />)}
           </div>
-        ))}
-      </div>
-    </main>
+          <CardGridSkeleton n={9} />
+        </div>
+      </main>
+    </>
   );
 }

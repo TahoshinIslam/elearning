@@ -30,7 +30,7 @@ export default function AnnouncementComposer() {
         <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} style={{ marginBottom: 14 }} />
         <label className="label">{t.announceBodyPh}</label>
         <textarea className="input" value={body} onChange={(e) => setBody(e.target.value)} rows={4} style={{ marginBottom: 18, resize: 'vertical' }} />
-        <button className="btn-primary" style={{ borderRadius: 10 }} disabled={busy} onClick={send}>
+        <button className="btn-primary" style={{ borderRadius: 0 }} disabled={busy} onClick={send}>
           {busy ? '…' : `📢 ${t.announceSend}`}
         </button>
       </div>

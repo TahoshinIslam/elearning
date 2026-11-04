@@ -5,7 +5,7 @@ import { useApp } from '@/context/AppContext';
 
 const PASS = 0.5;
 const fieldStyle = {
-  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 8,
+  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 0,
   padding: '9px 11px', fontSize: 13.5, fontFamily: 'inherit', width: '100%'
 };
 const blankQuestion = () => ({ question: '', options: [{ text: '', isCorrect: true }, { text: '', isCorrect: false }] });
@@ -105,7 +105,7 @@ export default function TeacherQuizzes() {
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
         <input value={nb.title} onChange={(e) => setNb((s) => ({ ...s, title: e.target.value }))} placeholder={t.quizNewName} style={{ ...fieldStyle, flex: 1 }} />
-        <button className="btn-primary" style={{ borderRadius: 8 }} disabled={busy} onClick={createNewQuiz}>{t.quizCreateBtn}</button>
+        <button className="btn-primary" style={{ borderRadius: 0 }} disabled={busy} onClick={createNewQuiz}>{t.quizCreateBtn}</button>
       </div>
     </div>
   );
@@ -146,7 +146,7 @@ export default function TeacherQuizzes() {
                 <div style={{ fontWeight: 700, color: 'var(--brand)', paddingTop: 8 }}>{qi + 1}.</div>
                 <input value={qq.question} placeholder={t.quizQuestionPh} onChange={(e) => setQ(qi, { question: e.target.value })} style={fieldStyle} />
                 <button onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== qi))}
-                  style={{ border: '1.5px solid var(--line)', background: '#fff', borderRadius: 8, padding: '0 12px', color: 'var(--danger,#c92a2a)', cursor: 'pointer' }}>✕</button>
+                  style={{ border: '1.5px solid var(--line)', background: '#fff', borderRadius: 0, padding: '0 12px', color: 'var(--danger,#c92a2a)', cursor: 'pointer' }}>✕</button>
               </div>
               <div style={{ display: 'grid', gap: 7, paddingLeft: 24 }}>
                 {qq.options.map((o, oi) => (
@@ -168,10 +168,10 @@ export default function TeacherQuizzes() {
           ))}
           <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
             <button onClick={() => setQuestions((qs) => [...qs, blankQuestion()])}
-              style={{ border: '1.5px dashed var(--line)', background: '#fff', borderRadius: 10, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', color: 'var(--ink-soft)' }}>
+              style={{ border: '1.5px dashed var(--line)', background: '#fff', borderRadius: 0, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', color: 'var(--ink-soft)' }}>
               {t.quizAddQuestion}
             </button>
-            <button className="btn-primary" style={{ borderRadius: 10 }} disabled={busy} onClick={save}>{busy ? '…' : t.quizSave}</button>
+            <button className="btn-primary" style={{ borderRadius: 0 }} disabled={busy} onClick={save}>{busy ? '…' : t.quizSave}</button>
           </div>
         </div>
       ) : (

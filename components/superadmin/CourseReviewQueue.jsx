@@ -33,7 +33,7 @@ export default function CourseReviewQueue() {
   if (queue === null) return null;
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', marginTop: 22 }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 0, overflow: 'hidden', marginTop: 22 }}>
       <div style={{ padding: '14px 20px', fontWeight: 700, fontSize: 15, borderBottom: '1px solid var(--border)', color: 'var(--ink)' }}>
         {bn ? 'কোর্স রিভিউ কিউ' : 'Course review queue'}
         <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>({queue.length})</span>
@@ -50,10 +50,10 @@ export default function CourseReviewQueue() {
               <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.instructor || '—'} · ৳{c.price ?? 0}</div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => approve(c)} style={{ border: 'none', background: 'var(--green,#16a34a)', color: 'var(--ink)', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 700 }}>
+              <button onClick={() => approve(c)} style={{ border: 'none', background: 'var(--green,#16a34a)', color: 'var(--ink)', borderRadius: 0, padding: '7px 14px', fontSize: 12.5, fontWeight: 700 }}>
                 {bn ? 'অনুমোদন' : 'Approve'}
               </button>
-              <button onClick={() => reject(c)} style={{ border: '1px solid var(--border)', background: 'none', color: 'var(--muted)', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 700 }}>
+              <button onClick={() => reject(c)} style={{ border: '1px solid var(--border)', background: 'none', color: 'var(--muted)', borderRadius: 0, padding: '7px 14px', fontSize: 12.5, fontWeight: 700 }}>
                 {bn ? 'ফেরত পাঠান' : 'Send back'}
               </button>
             </div>
@@ -62,7 +62,7 @@ export default function CourseReviewQueue() {
             value={noteDraft[c.id] || ''}
             onChange={(e) => setNoteDraft((d) => ({ ...d, [c.id]: e.target.value }))}
             placeholder={bn ? 'ফেরত পাঠানোর কারণ (ঐচ্ছিক)' : 'Reason for sending back (optional)'}
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 12.5, color: 'var(--ink)', fontFamily: 'inherit' }}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 0, padding: '7px 10px', fontSize: 12.5, color: 'var(--ink)', fontFamily: 'inherit' }}
           />
         </div>
       ))}

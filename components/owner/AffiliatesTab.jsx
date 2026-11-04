@@ -5,7 +5,7 @@ import { useApp } from '@/context/AppContext';
 
 const CREATE_ERR = { code_taken: 'affCodeTaken', invalid_code: 'affCodeTaken', invalid_pct: 'affCommission', name_required: 'affName' };
 const fieldStyle = {
-  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 8,
+  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 0,
   padding: '9px 11px', fontSize: 13.5, fontFamily: 'inherit', width: '100%'
 };
 const blank = { name: '', code: '', commissionPct: '10' };
@@ -44,7 +44,7 @@ export default function AffiliatesTab() {
           <div><label className="label">{t.affName}</label><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} style={fieldStyle} /></div>
           <div><label className="label">{t.affCode}</label><input value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} placeholder="BLOG15" style={{ ...fieldStyle, textTransform: 'uppercase' }} /></div>
           <div><label className="label">{t.affCommission}</label><input type="number" value={f.commissionPct} onChange={(e) => setF({ ...f, commissionPct: e.target.value })} style={fieldStyle} /></div>
-          <button className="btn-primary" style={{ borderRadius: 10, height: 38 }} onClick={create}>＋ {t.affCreate}</button>
+          <button className="btn-primary" style={{ borderRadius: 0, height: 38 }} onClick={create}>＋ {t.affCreate}</button>
         </div>
         {err && <div style={{ color: '#c92a2a', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
       </div>

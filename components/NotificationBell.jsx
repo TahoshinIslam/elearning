@@ -43,10 +43,10 @@ export default function NotificationBell() {
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <button type="button" onClick={openPanel} aria-label={t.notifications} aria-expanded={open} className="btn btn-ghost btn-icon" style={{ position: 'relative', borderRadius: 99 }}>
+      <button type="button" onClick={openPanel} aria-label={t.notifications} aria-expanded={open} className="btn btn-ghost btn-icon" style={{ position: 'relative', borderRadius: 0 }}>
         <Icon name="bell" size={18} />
         {unread > 0 && (
-          <span style={{ position: 'absolute', top: -5, right: -5, background: 'var(--brand)', color: '#fff', borderRadius: 99, minWidth: 17, height: 17, fontSize: 10.5, fontWeight: 700, display: 'grid', placeItems: 'center', padding: '0 4px' }}>
+          <span style={{ position: 'absolute', top: -5, right: -5, background: 'var(--brand)', color: '#fff', borderRadius: 0, minWidth: 17, height: 17, fontSize: 10.5, fontWeight: 700, display: 'grid', placeItems: 'center', padding: '0 4px' }}>
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -54,7 +54,7 @@ export default function NotificationBell() {
 
       {panel.mounted && (
         <div className="notif-dropdown" data-state={panel.state} onAnimationEnd={panel.onAnimationEnd} {...(panel.state === 'closing' ? { inert: '' } : {})} style={{
-          background: 'var(--paper, #fff)', color: 'var(--ink, #1a1a1a)', borderRadius: 12,
+          background: 'var(--paper, #fff)', color: 'var(--ink, #1a1a1a)', borderRadius: 0,
           boxShadow: '0 12px 40px rgba(0,0,0,.28)', border: '1px solid var(--line)', zIndex: 90
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1.5px solid var(--line)', position: 'sticky', top: 0, background: 'var(--paper,#fff)' }}>
@@ -73,7 +73,7 @@ export default function NotificationBell() {
                 {n.body && <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>{n.body}</div>}
                 <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 3 }}>{String(n.createdAt).replace('T', ' ').slice(0, 16)}</div>
               </div>
-              {!n.isRead && <span style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--brand)', marginTop: 5 }} />}
+              {!n.isRead && <span style={{ width: 8, height: 8, borderRadius: 0, background: 'var(--brand)', marginTop: 5 }} />}
             </div>
           ))}
         </div>

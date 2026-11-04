@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 
 const fieldStyle = {
-  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 8,
+  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 0,
   padding: '9px 11px', fontSize: 13.5, fontFamily: 'inherit', width: '100%'
 };
 
@@ -42,7 +42,7 @@ export default function PathsTab() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr auto', gap: 12, alignItems: 'end' }}>
           <div><label className="label">{t.pathTitle}</label><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={fieldStyle} /></div>
           <div><label className="label">{t.pathDesc}</label><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} style={fieldStyle} /></div>
-          <button className="btn-primary" style={{ borderRadius: 10, height: 38 }} onClick={create}>＋ {t.pathCreate}</button>
+          <button className="btn-primary" style={{ borderRadius: 0, height: 38 }} onClick={create}>＋ {t.pathCreate}</button>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export default function PathsTab() {
                     <option value="">— {t.pathAddCourse} —</option>
                     {available.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                   </select>
-                  <button className="btn-dark" style={{ borderRadius: 9 }} onClick={() => addCourse(p.id)}>＋</button>
+                  <button className="btn-dark" style={{ borderRadius: 0 }} onClick={() => addCourse(p.id)}>＋</button>
                 </div>
               </div>
             );

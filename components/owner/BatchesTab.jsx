@@ -6,7 +6,7 @@ import { useApp } from '@/context/AppContext';
 const fieldStyle = {
   border: '1px solid var(--field-line)',
   background: '#fff',
-  borderRadius: 8,
+  borderRadius: 0,
   padding: '10px 12px',
   fontSize: 14,
   fontFamily: 'inherit',
@@ -58,7 +58,7 @@ export default function BatchesTab() {
       </div>
 
       {showAdd && (
-        <div style={{ background: '#fff9f3', border: '1.5px solid #f2b28a', borderRadius: 14, padding: '18px 20px', marginBottom: 18 }}>
+        <div style={{ background: '#fff9f3', border: '1.5px solid #f2b28a', borderRadius: 0, padding: '18px 20px', marginBottom: 18 }}>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ flex: 2, minWidth: 200 }}>
               <label className="label" style={{ fontSize: 12.5, marginBottom: 5 }}>{t.batchName}</label>

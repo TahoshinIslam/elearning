@@ -34,7 +34,7 @@ export default async function SiteFooter() {
       </div>
       <div className="container-wide footer-grid">
         <div className="stack" style={{ '--gap': '14px' }}>
-          <Link href="/" className="brand" style={{ color: '#fff' }}><BrandMark /><span>Leo Learning</span></Link>
+          <Link href="/" className="brand" style={{ color: '#fff' }}><BrandMark /><span className="brand-word">Leo <span className="sticker">Learning</span></span></Link>
           <p style={{ maxWidth: 340, fontSize: 14.5, lineHeight: 1.6 }}>{c.footerTagline}</p>
           <p className="footer-pay"><span className="badge" style={{ background: 'var(--bkash, #E2136E)', color: '#fff', borderColor: 'transparent' }}>bKash</span>{c.paymentsBy}</p>
         </div>

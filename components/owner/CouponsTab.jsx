@@ -5,7 +5,7 @@ import { useApp } from '@/context/AppContext';
 
 const CREATE_ERR = { code_taken: 'couponCodeTaken', invalid_code: 'couponInvalid', invalid_value: 'couponInvalid' };
 const fieldStyle = {
-  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 8,
+  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 0,
   padding: '9px 11px', fontSize: 13.5, fontFamily: 'inherit', width: '100%'
 };
 const blank = { code: '', type: 'percent', value: '', expiresAt: '', usageLimit: '' };
@@ -71,7 +71,7 @@ export default function CouponsTab() {
             <label className="label">{t.couponLimit}</label>
             <input type="number" value={f.usageLimit} onChange={set('usageLimit')} placeholder={t.couponUnlimited} style={fieldStyle} />
           </div>
-          <button className="btn-primary" style={{ borderRadius: 10, height: 38 }} disabled={busy} onClick={create}>{t.couponCreate}</button>
+          <button className="btn-primary" style={{ borderRadius: 0, height: 38 }} disabled={busy} onClick={create}>{t.couponCreate}</button>
         </div>
         {err && <div style={{ color: '#c92a2a', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
       </div>

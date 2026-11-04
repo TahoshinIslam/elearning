@@ -33,7 +33,7 @@ export default function BlogPostPage() {
             {post.category && <span className="tag chip-orange">{post.category}</span>}
             <h1 style={{ fontSize: 'clamp(24px,4vw,36px)', fontWeight: 700, lineHeight: 1.25, margin: '12px 0 10px' }}>{post.title}</h1>
             <div style={{ fontSize: 13, color: 'var(--faint)', marginBottom: 20 }}>{t.blogBy} {post.author} · {post.publishedAt}</div>
-            <div className="placeholder-art" style={{ height: 220, fontSize: 13, borderRadius: 14, marginBottom: 24 }}>{post.cover || 'blog'}</div>
+            <div className="placeholder-art" style={{ height: 220, fontSize: 13, borderRadius: 0, marginBottom: 24 }}>{post.cover || 'blog'}</div>
             {post.excerpt && <p style={{ fontSize: 17, lineHeight: 1.7, color: '#44403c', fontWeight: 500, marginBottom: 20 }}>{post.excerpt}</p>}
             {String(post.body || '').split('\n').filter(Boolean).map((para, i) => (
               <p key={i} style={{ fontSize: 15.5, lineHeight: 1.85, color: '#292524', margin: '0 0 16px' }}>{para}</p>

@@ -77,7 +77,7 @@ export default function TeachersTab() {
                         fontWeight: 700,
                         background: 'var(--line-softer)',
                         color: 'var(--ink-soft)',
-                        borderRadius: 99,
+                        borderRadius: 0,
                         padding: '4px 6px 4px 11px'
                       }}
                     >
@@ -115,7 +115,7 @@ export default function TeachersTab() {
                   width: '100%',
                   padding: '10px 12px',
                   border: '1.5px solid var(--field-line)',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   fontSize: 13.5,
                   background: 'var(--field)',
                   cursor: 'pointer',

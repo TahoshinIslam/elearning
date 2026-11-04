@@ -1,4 +1,4 @@
-import { Hind_Siliguri } from 'next/font/google';
+import { Hind_Siliguri, Space_Grotesk, Anek_Bangla } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import MaintenanceBanner from '@/components/MaintenanceBanner';
@@ -7,12 +7,25 @@ import { currentSession } from '@/lib/auth';
 import { getCopy } from '@/lib/lang';
 import { siteUrl } from '@/lib/seo';
 
-// The only UI typeface: real 400/500/600/700 faces for Bangla and Latin
-// (no synthesized bold). Hierarchy: headings 700 · UI labels 600 · body 400–500.
+// Type system: Space Grotesk carries Latin text and the loud uppercase
+// display style; Bangla glyphs fall through to Anek Bangla (headings) and
+// Hind Siliguri (body), so mixed Bangla/English lines render in one rhythm.
 const hind = Hind_Siliguri({
   subsets: ['bengali', 'latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-hind',
+  display: 'swap'
+});
+const grotesk = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-grotesk',
+  display: 'swap'
+});
+const anek = Anek_Bangla({
+  subsets: ['bengali', 'latin'],
+  weight: ['500', '600', '700', '800'],
+  variable: '--font-anek',
   display: 'swap'
 });
 
@@ -27,7 +40,7 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: '#C2410C',
+  themeColor: '#FFD84D',
   width: 'device-width',
   initialScale: 1
 };
@@ -40,7 +53,7 @@ export default function RootLayout({ children }) {
     ? { id: session.id, role: session.role, name: session.name, email: session.email, studentId: session.studentId, teacherId: session.teacherId, tenantId: session.tenantId, sections: session.sections, permissions: session.permissions }
     : null;
   return (
-    <html lang={lang} className={hind.variable}>
+    <html lang={lang} className={`${hind.variable} ${grotesk.variable} ${anek.variable}`}>
       <body>
         <a href="#main" className="skip-link">{c.skip}</a>
         <AppProvider initialAuth={initialAuth} initialLang={lang}>

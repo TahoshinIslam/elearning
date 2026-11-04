@@ -6,7 +6,7 @@ import { useApp } from '@/context/AppContext';
 const TODAY = '2026-07-06';
 
 const fieldStyle = {
-  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 8,
+  border: '1px solid var(--field-line)', background: '#fff', borderRadius: 0,
   padding: '9px 11px', fontSize: 13.5, fontFamily: 'inherit', width: '100%'
 };
 
@@ -61,7 +61,7 @@ export default function TeacherClasses() {
           onChange={(e) => setUrl(e.target.value)}
           placeholder={t.lcRecUrlPh}
         />
-        <button className="btn-dark" style={{ borderRadius: 8, padding: '9px 14px' }} onClick={() => upload(c, url)}>{t.lcRecUrlSave}</button>
+        <button className="btn-dark" style={{ borderRadius: 0, padding: '9px 14px' }} onClick={() => upload(c, url)}>{t.lcRecUrlSave}</button>
       </div>
     );
   };
@@ -85,7 +85,7 @@ export default function TeacherClasses() {
           <button className="btn btn-primary" onClick={() => start(c)}>▶ {t.lcStart}</button>
         )}
         {c.status === 'live' && (
-          <button className="btn-dark" style={{ borderRadius: 9, padding: '9px 16px' }} onClick={() => end(c)}>{t.lcEnd}</button>
+          <button className="btn-dark" style={{ borderRadius: 0, padding: '9px 16px' }} onClick={() => end(c)}>{t.lcEnd}</button>
         )}
         {c.status === 'ended' && (
           c.recordingUrl
@@ -113,7 +113,7 @@ export default function TeacherClasses() {
       </div>
 
       {showForm && (
-        <div style={{ background: '#fff9f3', border: '1.5px solid #f2b28a', borderRadius: 14, padding: '18px 20px', marginBottom: 20 }}>
+        <div style={{ background: '#fff9f3', border: '1.5px solid #f2b28a', borderRadius: 0, padding: '18px 20px', marginBottom: 20 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(150px,100%),1fr))', gap: 12 }}>
             <div style={{ gridColumn: '1 / -1' }}>
               <label className="label" style={{ fontSize: 12.5, marginBottom: 5 }}>{t.lcTitle}</label>

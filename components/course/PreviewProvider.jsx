@@ -32,7 +32,7 @@ export default function PreviewProvider({ courseTitle, previews, lang, children 
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
               {previews.map((p) => (
                 <li key={p.id}>
-                  <button type="button" className="cur-lesson" aria-current={p.id === current ? 'true' : undefined} onClick={() => setCurrent(p.id)} style={{ borderRadius: 8 }}>
+                  <button type="button" className="cur-lesson" aria-current={p.id === current ? 'true' : undefined} onClick={() => setCurrent(p.id)} style={{ borderRadius: 0 }}>
                     <Icon name="play" size={14} style={{ marginTop: 3 }} />
                     <span className="lt">{p.title}</span>
                     {p.durationSeconds ? <span className="lm tabular">{clock(p.durationSeconds)}</span> : null}

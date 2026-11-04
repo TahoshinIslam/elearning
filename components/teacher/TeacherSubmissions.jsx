@@ -6,7 +6,7 @@ import { useApp } from '@/context/AppContext';
 const inputStyle = {
   border: '1px solid var(--field-line)',
   background: 'var(--field)',
-  borderRadius: 8,
+  borderRadius: 0,
   padding: '8px 11px',
   fontSize: 13.5,
   fontFamily: 'inherit'
@@ -67,7 +67,7 @@ export default function TeacherSubmissions() {
                 </div>
 
                 {s.content && (
-                  <div style={{ marginTop: 10, fontSize: 13, color: 'var(--ink-soft)', background: 'var(--paper)', borderRadius: 10, padding: '10px 12px', lineHeight: 1.6 }}>
+                  <div style={{ marginTop: 10, fontSize: 13, color: 'var(--ink-soft)', background: 'var(--paper)', borderRadius: 0, padding: '10px 12px', lineHeight: 1.6 }}>
                     {s.content}
                   </div>
                 )}

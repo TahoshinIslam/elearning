@@ -45,7 +45,7 @@ export default function AuditLogView() {
   if (log === null) return null;
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', marginTop: 22 }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 0, overflow: 'hidden', marginTop: 22 }}>
       <div style={{ padding: '14px 20px', fontWeight: 700, fontSize: 15, borderBottom: '1px solid var(--border)', color: 'var(--ink)' }}>
         {bn ? 'সিকিউরিটি লগ' : 'Security log'}
         <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>({log.length})</span>
@@ -58,7 +58,7 @@ export default function AuditLogView() {
         <div style={{ maxHeight: 420, overflowY: 'auto' }}>
           {log.map((e) => (
             <div key={e.id} style={{ padding: '11px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, fontSize: 13 }}>
-              <span style={{ ...sevStyle(e.action), borderRadius: 6, padding: '3px 9px', fontSize: 11, fontWeight: 700, flex: 'none' }}>
+              <span style={{ ...sevStyle(e.action), borderRadius: 0, padding: '3px 9px', fontSize: 11, fontWeight: 700, flex: 'none' }}>
                 {(ACTION_LABEL[e.action] || { bn: e.action, en: e.action })[bn ? 'bn' : 'en']}
               </span>
               <span style={{ color: 'var(--muted)', flex: 1, minWidth: 0 }}>

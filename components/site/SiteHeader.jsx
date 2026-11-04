@@ -115,7 +115,7 @@ export default function SiteHeader() {
         </button>
         <Link href="/" className="brand" aria-label="Leo Learning — home">
           <BrandMark />
-          <span>Leo Learning</span>
+          <span className="brand-word">Leo <span className="sticker">Learning</span></span>
         </Link>
         <nav className="nav-links" aria-label="Primary">
           {links.map((l) => (

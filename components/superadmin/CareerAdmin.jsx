@@ -8,12 +8,12 @@ const dk = {
   border: '1px solid var(--border)',
   background: 'var(--surface)',
   color: 'var(--ink)',
-  borderRadius: 8,
+  borderRadius: 0,
   padding: '9px 11px',
   fontSize: 13.5,
   fontFamily: 'inherit'
 };
-const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16 };
+const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 0 };
 const faint = 'var(--muted)';
 
 export default function CareerAdmin() {
@@ -55,7 +55,7 @@ export default function CareerAdmin() {
         </div>
         <button
           onClick={post}
-          style={{ marginTop: 12, border: 'none', background: '#ff8a3d', color: 'var(--coal)', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
+          style={{ marginTop: 12, border: '3px solid var(--ink)', boxShadow: '3px 3px 0 var(--ink)', textTransform: 'uppercase', background: 'var(--c-orange)', color: 'var(--coal)', borderRadius: 0, padding: '9px 18px', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
         >
           + {t.postJob}
         </button>
@@ -72,12 +72,12 @@ export default function CareerAdmin() {
             <div style={{ color: faint }}>{j.company}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>{applicantCount(j.id)}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 99, padding: '3px 10px', background: j.open ? 'var(--success-tint)' : 'var(--danger-tint)', color: j.open ? '#14532D' : '#7F1D1D' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 0, padding: '3px 10px', background: j.open ? 'var(--success-tint)' : 'var(--danger-tint)', color: j.open ? '#14532D' : '#7F1D1D' }}>
                 {j.open ? t.jobOpen : t.jobClosed}
               </span>
               <button
                 onClick={() => api.toggleJob(j.id)}
-                style={{ border: '1px solid var(--border)', background: 'none', color: 'var(--muted)', borderRadius: 8, padding: '4px 10px', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit' }}
+                style={{ border: '1px solid var(--border)', background: 'none', color: 'var(--muted)', borderRadius: 0, padding: '4px 10px', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit' }}
               >
                 {j.open ? t.jobClosed : t.jobOpen}
               </button>

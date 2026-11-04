@@ -5,19 +5,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Icon from '@/components/Icon';
-import BrandMark from '@/components/ui/BrandMark';
 import { copy } from '@/lib/copy';
 import { safeReturnTo } from '@/lib/safeRedirect';
 import { ROLE_HOME } from '@/lib/rbac';
 
-function Shell({ title, sub, children, footer }) {
+function Shell({ title, sub, children, footer, icon = 'user', tone = '' }) {
   return (
     <main id="main" className="auth-shell">
       <div className="surface surface-raised auth-card anim-in">
-        <div className="stack" style={{ '--gap': '6px', marginBottom: 24 }}>
-          <BrandMark size={40} />
-          <h1 className="h2" style={{ marginTop: 14 }}>{title}</h1>
-          {sub && <p className="muted">{sub}</p>}
+        <div className="stack" style={{ '--gap': '8px', marginBottom: 28, alignItems: 'center', textAlign: 'center' }}>
+          <span className={`auth-icon ${tone}`} aria-hidden="true"><Icon name={icon} size={28} /></span>
+          <h1 className="h2" style={{ marginTop: 16 }}>{title}</h1>
+          {sub && <p className="muted" style={{ fontWeight: 600 }}>{sub}</p>}
         </div>
         {children}
         {footer && <div className="small muted" style={{ marginTop: 22, textAlign: 'center' }}>{footer}</div>}
@@ -77,7 +76,7 @@ export function LoginForm({ returnTo, showDemo }) {
   };
 
   return (
-    <Shell title={c.loginTitle} sub={target ? c.returnNote : c.loginSub}
+    <Shell icon="lock" tone="is-login" title={c.loginTitle} sub={target ? c.returnNote : c.loginSub}
       footer={<>{c.noAccount} <Link className="link" href={`/register${target ? `?returnTo=${encodeURIComponent(target)}` : ''}`}>{c.signup}</Link></>}>
       <form className="stack" onSubmit={submit} noValidate>
         <div className="field">
@@ -181,7 +180,7 @@ export function ForgotForm() {
     } catch (err) { setError(c[`err_${err.message}`] || c.err_generic); } finally { setBusy(false); }
   };
   return (
-    <Shell title={c.forgotTitle} sub={c.forgotSub} footer={<Link className="link" href="/login">{c.login}</Link>}>
+    <Shell icon="mail" tone="is-forgot" title={c.forgotTitle} sub={c.forgotSub} footer={<Link className="link" href="/login">{c.login}</Link>}>
       {sent ? (
         <div className="stack">
           <div className="notice notice-success" role="status"><Icon name="mail" size={18} />{c.forgotSent}</div>
@@ -221,7 +220,7 @@ export function ResetForm({ token }) {
     } catch (err) { setError(c[`err_${err.message}`] || c.err_generic); } finally { setBusy(false); }
   };
   return (
-    <Shell title={c.resetTitle}>
+    <Shell icon="shield" tone="is-reset" title={c.resetTitle}>
       {done ? (
         <div className="stack"><div className="notice notice-success" role="status"><Icon name="checkCircle" size={18} />{c.resetDone}</div><Link href="/login" className="btn btn-primary btn-block">{c.loginBtn}</Link></div>
       ) : !token ? (

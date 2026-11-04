@@ -52,18 +52,18 @@ export default function DemoClassPage() {
             {/* video (recorded) or schedule banner (upcoming) */}
             {recorded ? (
               auth ? (
-                <video controls playsInline preload="metadata" style={{ width: '100%', borderRadius: 14, background: '#000', aspectRatio: '16 / 9' }} src={dc.videoUrl}>
+                <video controls playsInline preload="metadata" style={{ width: '100%', borderRadius: 0, background: '#000', aspectRatio: '16 / 9' }} src={dc.videoUrl}>
                   {t.dcWatchRec}
                 </video>
               ) : (
-                <div className="placeholder-art" style={{ height: 300, borderRadius: 14, display: 'grid', placeItems: 'center', textAlign: 'center', gap: 10 }}>
+                <div className="placeholder-art" style={{ height: 300, borderRadius: 0, display: 'grid', placeItems: 'center', textAlign: 'center', gap: 10 }}>
                   <div style={{ fontSize: 34 }}>🔒</div>
                   <div style={{ fontWeight: 700 }}>{t.dcJoinToWatch}</div>
                   <button className="btn-primary" onClick={() => router.push('/login?returnTo=' + encodeURIComponent(`/demo/${slug}`))}>{t.loginBtn} →</button>
                 </div>
               )
             ) : (
-              <div style={{ background: 'var(--coal)', color: '#fff', borderRadius: 16, padding: '26px 28px', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ background: 'var(--coal)', color: '#fff', borderRadius: 0, padding: '26px 28px', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                 <div style={{ flex: 1, minWidth: 220 }}>
                   <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,.6)', fontWeight: 700 }}>{t.dcSchedule}</div>
                   <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{dc.schedule}</div>
@@ -72,7 +72,7 @@ export default function DemoClassPage() {
                 <button
                   onClick={register}
                   disabled={busy || dc.registered}
-                  style={{ border: 'none', background: dc.registered ? 'rgba(255,255,255,.18)' : 'var(--brand)', color: '#fff', borderRadius: 12, padding: '14px 26px', fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: dc.registered ? 'default' : 'pointer' }}
+                  style={{ border: 'none', background: dc.registered ? 'rgba(255,255,255,.18)' : 'var(--brand)', color: '#fff', borderRadius: 0, padding: '14px 26px', fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: dc.registered ? 'default' : 'pointer' }}
                 >
                   {dc.registered ? t.dcRegistered : `${t.dcRegister} →`}
                 </button>

@@ -17,7 +17,7 @@ export default function CourseCard({ course, lang = 'bn', owned = false, categor
   return (
     <article className="course-card" style={{ '--tone': tone.bg, '--tone-2': tone.bg2, '--tone-tint': tone.tint }}>
       <div className="course-card-media">
-        <CourseCover id={course.id} title={course.title} category={course.category} kicker={kicker} thumbnailUrl={course.thumbnailUrl} priority={priority} />
+        <CourseCover id={course.id} title={course.title} category={course.category} kicker={kicker} thumbnailUrl={course.thumbnailUrl} priority={priority} showTitle={false} />
         <div className="course-card-flags">
           <CourseBadges badges={course.badges} lang={lang} />
           {offerText && !owned && !course.upcoming && <span className="badge offer-flag">{c.offerSave(offerText)}</span>}
@@ -42,7 +42,7 @@ export default function CourseCard({ course, lang = 'bn', owned = false, categor
               <span className="card-rating" aria-label={lang === 'en' ? `Rated ${course.rating} from ${course.reviewCount} reviews` : `${num(lang, course.rating)} রেটিং, ${num(lang, course.reviewCount)}টি রিভিউ`}>
                 <Icon name="star" size={13} /><strong aria-hidden="true">{num(lang, course.rating.toFixed(1))}</strong><span aria-hidden="true">({num(lang, course.reviewCount)})</span>
               </span>
-            ) : <span className="muted">{c.noReviewsYet}</span>}
+            ) : null}
             {social > 0 && <span><Icon name="users" size={13} />{num(lang, social)}<span className="sr-only"> {course.free ? c.studentsN(social) : c.purchasersN(social)}</span></span>}
             {course.lessonCount > 0 && <span className="hide-xs"><Icon name="list" size={13} />{num(lang, course.lessonCount)}</span>}
             {course.durationSeconds > 0 && <span className="hide-xs"><Icon name="clock" size={13} />{duration(lang, course.durationSeconds)}</span>}

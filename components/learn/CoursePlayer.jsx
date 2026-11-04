@@ -273,7 +273,7 @@ export default function CoursePlayer({ outline: initial, lang, children }) {
                     <div className="fact"><span>{c.factType}</span><span className="row" style={{ '--gap': '6px' }}><Icon name={TYPE_ICON[lesson.type] || 'play'} size={14} />{c[`type_${lesson.type}`]}</span></div>
                     {(lesson.durationSeconds || lesson.durationLabel) && <div className="fact"><span>{c.factDuration}</span><span className="tabular">{lesson.durationSeconds ? clock(lesson.durationSeconds) : lesson.durationLabel}</span></div>}
                     {learner && <div className="fact"><span>{c.factStatus}</span><span style={{ color: completed.has(lesson.id) ? '#86EFAC' : undefined }}>{completed.has(lesson.id) ? c.completed : c.notCompleted}</span></div>}
-                    {lesson.resources > 0 && <div className="fact"><span>{c.factResources}</span><button type="button" className="link" style={{ background: 'none', border: 0, padding: 0, color: '#FDBA74', font: 'inherit' }} onClick={() => { setTab('resources'); document.getElementById('tab-resources')?.focus(); }}>{num(lang, lesson.resources)}</button></div>}
+                    {lesson.resources > 0 && <div className="fact"><span>{c.factResources}</span><button type="button" className="link" style={{ background: 'none', border: 0, padding: 0, color: '#FFD84D', font: 'inherit' }} onClick={() => { setTab('resources'); document.getElementById('tab-resources')?.focus(); }}>{num(lang, lesson.resources)}</button></div>}
                   </aside>
                 </div>
               </div>

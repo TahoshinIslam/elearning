@@ -177,7 +177,7 @@ export function QuizPanel({ lesson, lang, learner, onSubmitted }) {
               const isRight = correct && correct[qq.id] === o.id;
               const picked = Number(answers[qq.id]) === o.id;
               return (
-                <label key={o.id} className="check" style={{ padding: '8px 10px', borderRadius: 8, background: correct && isRight ? 'rgba(34,197,94,.14)' : correct && picked ? 'rgba(239,68,68,.14)' : 'transparent', color: 'var(--stage-ink)' }}>
+                <label key={o.id} className="check" style={{ padding: '8px 10px', borderRadius: 0, background: correct && isRight ? 'rgba(34,197,94,.14)' : correct && picked ? 'rgba(239,68,68,.14)' : 'transparent', color: 'var(--stage-ink)' }}>
                   <input type="radio" name={`q-${qq.id}`} checked={picked} disabled={!learner} onChange={() => setAnswers((a) => ({ ...a, [qq.id]: o.id }))} />
                   <span>{o.text}{correct && isRight && <span className="sr-only"> ({en ? 'correct answer' : 'সঠিক উত্তর'})</span>}</span>
                 </label>
