@@ -1,31 +1,15 @@
-import Link from 'next/link';
-import SiteNav from '@/components/SiteNav';
-import SiteFooter from '@/components/site/SiteFooter';
-import Icon from '@/components/Icon';
+import StatusScreen from '@/components/site/StatusScreen';
 import { getCopy } from '@/lib/lang';
 
 export const metadata = { title: 'Page not found', robots: { index: false } };
 
-// Site-wide 404 (unknown URLs and notFound() calls without a closer boundary).
-export default function NotFound() {
-  const { lang } = getCopy();
+// Site-wide 404: unknown URLs and notFound() calls without a closer boundary.
+export default async function NotFound() {
+  const { lang } = await getCopy();
   const en = lang === 'en';
   return (
-    <>
-      <SiteNav />
-      <main id="main" className="container section">
-        <div className="surface state">
-          <div className="state-icon"><Icon name="compass" size={24} /></div>
-          <p className="eyebrow"><span className="sticker sticker-pink">404</span></p>
-          <h1 className="h2">{en ? 'This page doesn’t exist' : 'পেজটি খুঁজে পাওয়া যায়নি'}</h1>
-          <p>{en ? 'The link may be old or mistyped.' : 'লিংকটি পুরোনো বা ভুল হতে পারে।'}</p>
-          <div className="cluster" style={{ justifyContent: 'center' }}>
-            <Link href="/" className="btn btn-secondary">{en ? 'Home' : 'হোম'}</Link>
-            <Link href="/courses" className="btn btn-primary">{en ? 'Browse courses' : 'সব কোর্স দেখুন'}<Icon name="arrowRight" size={16} /></Link>
-          </div>
-        </div>
-      </main>
-      <SiteFooter />
-    </>
+    <StatusScreen code={404} lang={lang}
+      title={en ? 'This page wandered off' : 'পেজটি খুঁজে পাওয়া যায়নি'}
+      message={en ? 'The link may be old or mistyped. Try the course catalog — what you need is probably there.' : 'লিংকটি পুরোনো বা ভুল হতে পারে। কোর্স তালিকা দেখুন — যা খুঁজছেন সম্ভবত সেখানেই আছে।'} />
   );
 }

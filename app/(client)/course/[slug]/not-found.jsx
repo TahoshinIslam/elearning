@@ -1,22 +1,12 @@
-import Link from 'next/link';
-import SiteNav from '@/components/SiteNav';
-import Icon from '@/components/Icon';
+import StatusScreen from '@/components/site/StatusScreen';
 import { getCopy } from '@/lib/lang';
 
-// Honest "unavailable" state for unknown, withdrawn or unpublished courses.
-export default function CourseNotFound() {
-  const { c } = getCopy();
+export default async function CourseNotFound() {
+  const { lang } = await getCopy();
+  const en = lang === 'en';
   return (
-    <>
-      <SiteNav />
-      <main id="main" className="container section">
-        <div className="surface state">
-          <div className="state-icon"><Icon name="book" size={24} /></div>
-          <h1 className="h3">{c.unavailableT}</h1>
-          <p>{c.unavailableD}</p>
-          <Link href="/courses" className="btn btn-primary">{c.browseCourses}</Link>
-        </div>
-      </main>
-    </>
+    <StatusScreen code={404} lang={lang}
+      title={en ? 'This course isn’t available' : 'এই কোর্সটি পাওয়া যাচ্ছে না'}
+      message={en ? 'It may have been unpublished or the link changed. Browse the catalog for similar courses.' : 'কোর্সটি হয়তো সরানো হয়েছে বা লিংক বদলেছে। একই ধরনের কোর্স ক্যাটালগে দেখুন।'} />
   );
 }
