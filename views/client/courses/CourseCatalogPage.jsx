@@ -12,8 +12,9 @@ import { categoryLabel } from '@/lib/categoryLabel';
 import { abs } from '@/lib/seo';
 
 
-export function generateMetadata({ searchParams }) {
-  const { lang } = getCopy();
+export async function generateMetadata(props) {
+  const searchParams = await props.searchParams;
+  const { lang } = await getCopy();
   const c = copy(lang);
   const query = parseCatalogQuery(searchParams);
   const filtered = query.q || query.category || query.class || query.collection || query.level || query.language || query.price || query.page > 1;
@@ -34,8 +35,9 @@ function pageHref(searchParams, page) {
   return s ? `/courses?${s}` : '/courses';
 }
 
-export default async function CoursesPage({ searchParams }) {
-  const { lang, c } = getCopy();
+export default async function CoursesPage(props) {
+  const searchParams = await props.searchParams;
+  const { lang, c } = await getCopy();
   const query = parseCatalogQuery(searchParams);
   const [result, facets, owned] = await Promise.all([
     listPublishedCourses(query), getCatalogFacets(), getOwnedCourseIds(await currentSession())

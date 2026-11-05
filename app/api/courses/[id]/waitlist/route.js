@@ -7,10 +7,11 @@ import { rateLimit, clientIp } from '@/lib/rateLimit';
 export const dynamic = 'force-dynamic';
 
 // Real opt-in "Notify me" for an announced upcoming course.
-export async function POST(request, { params }) {
+export async function POST(request, props) {
+  const params = await props.params;
   try {
     const session = await currentSession();
-    rateLimit(`waitlist:${session?.id || clientIp()}`, { limit: 10, windowMs: 60 * 60_000 });
+    rateLimit(`waitlist:${session?.id || (await clientIp())}`, { limit: 10, windowMs: 60 * 60_000 });
     const courseId = Number(params.id);
     const [course] = await q('SELECT id FROM courses WHERE id = ? AND published = 0 AND is_upcoming = 1', [courseId]);
     if (!course) throw new HttpError(404, { error: 'not_upcoming' });
@@ -23,7 +24,8 @@ export async function POST(request, { params }) {
 }
 
 // Staff: the waitlist for a course.
-export async function GET(request, { params }) {
+export async function GET(request, props) {
+  const params = await props.params;
   try {
     await requireStaffSection('courses', 'view');
     return NextResponse.json(await q('SELECT email, created_at AS createdAt FROM course_waitlist WHERE course_id = ? ORDER BY id DESC', [Number(params.id)]));

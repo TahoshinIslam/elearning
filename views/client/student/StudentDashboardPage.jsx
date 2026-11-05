@@ -24,11 +24,12 @@ const VIEWS = ['learning', 'orders', 'certificates', 'wishlist', 'live', 'career
 
 // "My Learning" and the student account area. Every number shown is read
 // from the database for the signed-in student only.
-export default async function StudentPage({ searchParams }) {
+export default async function StudentPage(props) {
+  const searchParams = await props.searchParams;
   const session = await currentSession();
   if (!session) redirect('/login?returnTo=/student');
   if (session.role !== 'student' || !session.studentId) redirect(ROLE_HOME[session.role] || '/');
-  const lang = getLang();
+  const lang = await getLang();
   const view = VIEWS.includes(searchParams?.view) ? searchParams.view : 'learning';
 
   let body = null;

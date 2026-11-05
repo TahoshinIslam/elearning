@@ -37,7 +37,7 @@ function contentSecurityPolicy(nonce) {
   ].join('; ');
 }
 
-export function middleware(request) {
+export function proxy(request) {
   const { pathname } = request.nextUrl;
   const isApi = pathname.startsWith('/api/');
   const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
@@ -48,6 +48,7 @@ export function middleware(request) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.delete('x-middleware-subrequest'); // never trust this from clients
   if (!isApi) {
+    requestHeaders.set('x-pathname', pathname);
     requestHeaders.set('x-nonce', nonce);
     requestHeaders.set('Content-Security-Policy', csp);
   }

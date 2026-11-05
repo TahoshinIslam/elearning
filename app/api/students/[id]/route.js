@@ -5,6 +5,7 @@ import { getStudentRecord } from '@/lib/studentAdminRepo';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request, { params }) {
+export async function GET(request, props) {
+  const params = await props.params;
   try { await requireStaffSection('students'); return NextResponse.json(await getStudentRecord(params.id)); } catch (e) { return errResponse(e); }
 }

@@ -22,9 +22,10 @@ import { categoryLabel } from '@/lib/categoryLabel';
 import { abs } from '@/lib/seo';
 
 
-export async function generateMetadata({ params }) {
+export async function generateMetadata(props) {
+  const params = await props.params;
   const course = await getPublicCourse(params.slug);
-  const { lang } = getCopy();
+  const { lang } = await getCopy();
   if (!course) return { title: copy(lang).unavailableT, robots: { index: false } };
   const description = (course.tagline || course.description || '').slice(0, 180);
   const url = abs(`/course/${course.slug}`);
@@ -36,8 +37,9 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default async function CoursePage({ params }) {
-  const { lang, c } = getCopy();
+export default async function CoursePage(props) {
+  const params = await props.params;
+  const { lang, c } = await getCopy();
   const course = await getPublicCourse(params.slug);
   if (!course) notFound();
   const session = await currentSession();

@@ -7,7 +7,8 @@ export const runtime = 'nodejs';
 // Local-provider public assets — course thumbnails only. Every other prefix
 // (videos/, resources/, captions/) is private and only reachable through a
 // signed /api/storage/object/<token> URL.
-export async function GET(request, { params }) {
+export async function GET(request, props) {
+  const params = await props.params;
   if (currentProvider() !== 'local') return new Response('Not found', { status: 404 });
   const key = (params.key || []).join('/');
   if (!key.startsWith('thumbnails/')) return new Response('Not found', { status: 404 });

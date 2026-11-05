@@ -7,7 +7,7 @@ import { getSettings } from '@/lib/settingsRepo';
 // popup (targeted, triggered, tracked) and the floating WhatsApp / Messenger
 // chat button configured in Admin → Settings → Social.
 export default async function ClientLayout({ children }) {
-  const lang = getLang();
+  const lang = await getLang();
   const settings = await getSettings().catch(() => ({}));
   return (
     <>

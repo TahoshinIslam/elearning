@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // and rate-limited; never echoes anything back.
 export async function POST(request) {
   try {
-    rateLimit(`clientlog:${clientIp()}`, { limit: 20, windowMs: 10 * 60_000 });
+    rateLimit(`clientlog:${(await clientIp())}`, { limit: 20, windowMs: 10 * 60_000 });
     const b = await request.json().catch(() => ({}));
     logger.error('client_error', {
       kind: String(b.kind || 'boundary').slice(0, 20),

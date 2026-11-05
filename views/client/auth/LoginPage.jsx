@@ -6,7 +6,8 @@ import { safeReturnTo } from '@/lib/safeRedirect';
 
 export const metadata = { title: 'Log in', robots: { index: false } };
 
-export default async function LoginPage({ searchParams }) {
+export default async function LoginPage(props) {
+  const searchParams = await props.searchParams;
   const returnTo = safeReturnTo(searchParams?.returnTo, '');
   if (await currentSession()) redirect(returnTo || '/student');
   // Demo quick-login is a development convenience only.

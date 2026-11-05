@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 // DEVELOPMENT ONLY — see lib/bkashSimulator.js. 404 unless the simulator is
 // explicitly enabled outside production.
-export async function POST(request, { params }) {
+export async function POST(request, props) {
+  const params = await props.params;
   if (!simulatorEnabled()) return new NextResponse('Not found', { status: 404 });
   const path = (params.path || []).join('/');
   const body = await request.json().catch(() => ({}));

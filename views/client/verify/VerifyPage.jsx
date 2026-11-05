@@ -6,10 +6,11 @@ import { getCopy } from '@/lib/lang';
 export const metadata = { title: 'Verify a certificate' };
 
 // Certificate lookup form → /verify/[certNo].
-export default function VerifyIndex({ searchParams }) {
+export default async function VerifyIndex(props) {
+  const searchParams = await props.searchParams;
   const no = typeof searchParams?.no === 'string' ? searchParams.no.trim() : '';
   if (no) redirect(`/verify/${encodeURIComponent(no.slice(0, 64))}`);
-  const { c } = getCopy();
+  const { c } = await getCopy();
   return (
     <>
       <SiteNav />

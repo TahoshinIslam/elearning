@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useMemo, useCallback, useState } from 'react';
+import { createContext, useContext, useRef, useEffect, useMemo, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { makeStore } from '@/store/store';
@@ -63,18 +63,21 @@ import {
   useRecordPaymentMutation,
   useRefundPaymentMutation
 } from '@/store/api';
-import { T } from '@/lib/i18n';
+// The active language's dictionary arrives from the server layout (only one
+// language ships to the browser; switching language refreshes from the server).
+const DictContext = createContext({});
 
 // Restores the persisted auth session once the store is mounted.
-function AuthHydrator({ children }) {
+function AuthHydrator({ children, skip }) {
   const dispatch = useDispatch();
-  useEffect(() => { dispatch(hydrateAuth()); }, [dispatch]);
+  // The server layout already handed us the session; only ask the API when it didn't.
+  useEffect(() => { if (!skip) dispatch(hydrateAuth()); }, [dispatch, skip]);
   return children;
 }
 
 // initialAuth / initialLang come from the server layout (session cookie +
 // language cookie), so the first client render already knows who's here.
-export function AppProvider({ children, initialAuth, initialLang }) {
+export function AppProvider({ children, initialAuth, initialLang, dict }) {
   const storeRef = useRef(null);
   if (!storeRef.current) {
     storeRef.current = makeStore(initialAuth !== undefined
@@ -83,7 +86,9 @@ export function AppProvider({ children, initialAuth, initialLang }) {
   }
   return (
     <Provider store={storeRef.current}>
-      <AuthHydrator>{children}</AuthHydrator>
+      <DictContext.Provider value={dict || {}}>
+        <AuthHydrator skip={initialAuth !== undefined}>{children}</AuthHydrator>
+      </DictContext.Provider>
     </Provider>
   );
 }
@@ -106,15 +111,16 @@ export function useApp() {
   const ready = authReady;
   const opt = (allowed) => ({ skip: !ready || !allowed });
   const sq = useGetStudentsQuery(undefined, opt(isStaff));
-  const bq = useGetBatchesQuery(undefined, opt(true));
+  // Visitors never load rosters/catalog datasets: no public component needs them.
+  const bq = useGetBatchesQuery(undefined, opt(signedIn));
   const tq = useGetTeachersQuery(undefined, opt(isStaff));
   const tnq = useGetTenantsQuery(undefined, opt(isAdmin));
-  const cq = useGetCoursesQuery(undefined, opt(true));
+  const cq = useGetCoursesQuery(undefined, opt(signedIn));
   const eq = useGetEnrollmentsQuery(undefined, opt(signedIn));
   const subq = useGetSubmissionsQuery(undefined, opt(isStudent || isStaff));
   const aq = useGetAttendanceQuery(undefined, opt(isStudent || isStaff));
   const ceq = useGetCertificatesQuery(undefined, opt(isStudent || isStaff));
-  const jq = useGetJobsQuery(undefined, opt(true));
+  const jq = useGetJobsQuery(undefined, opt(signedIn));
   const apq = useGetApplicationsQuery(undefined, opt(isStudent || isStaff));
   const lcq = useGetLiveClassesQuery(undefined, opt(signedIn));
   const { data: payments = [] } = useGetPaymentsQuery(undefined, opt(isStaff));
@@ -684,7 +690,7 @@ export function useApp() {
   const cartCount = cart.length;
   const cartTotal = cart.reduce((a, x) => a + Number(x.price || 0), 0);
 
-  const t = T[lang];
+  const t = useContext(DictContext);
   const centerDisplay = centerName.trim() || 'আলোর পথ কোচিং';
   const slug = centerName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '') || 'alorpath';
 

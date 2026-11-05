@@ -14,14 +14,16 @@ import { abs } from '@/lib/seo';
 
 async function findPath(slug) { return (await getPublicPaths()).find((p) => p.slug === slug) || null; }
 
-export async function generateMetadata({ params }) {
+export async function generateMetadata(props) {
+  const params = await props.params;
   const path = await findPath(params.slug);
   if (!path) return { robots: { index: false } };
   return { title: path.title, description: path.description.slice(0, 180), alternates: { canonical: abs(`/paths/${path.slug}`) } };
 }
 
-export default async function PathPage({ params }) {
-  const { lang, c } = getCopy();
+export default async function PathPage(props) {
+  const params = await props.params;
+  const { lang, c } = await getCopy();
   const path = await findPath(params.slug);
   if (!path) notFound();
   const owned = await getOwnedCourseIds(await currentSession());

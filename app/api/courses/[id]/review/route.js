@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 // Submitting is an owner action; approving/rejecting is superadmin-only —
 // the actual "review" oversight the workflow is named for, not owner
 // self-approval.
-export async function POST(request, { params }) {
+export async function POST(request, props) {
+  const params = await props.params;
   try {
     const body = await request.json();
     const courseId = Number(params.id);

@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 
 // "Check payment status": asks bKash directly about this order. Owner of the
 // order or staff only; repeatable and idempotent.
-export async function POST(request, { params }) {
+export async function POST(request, props) {
+  const params = await props.params;
   try {
     const session = await requireUser();
     rateLimit(`reconcile:${session.id}`, LIMITS.reconcile);

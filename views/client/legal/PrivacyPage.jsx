@@ -3,8 +3,8 @@ import LegalPage from '@/components/LegalPage';
 
 export const metadata = { title: 'Privacy policy' };
 
-export default function PrivacyPage() {
-  const lang = getLang();
+export default async function PrivacyPage() {
+  const lang = await getLang();
   const bn = lang === 'bn';
 
   return (

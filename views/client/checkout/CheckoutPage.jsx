@@ -15,8 +15,9 @@ export const metadata = { title: 'Checkout', robots: { index: false } };
 // Direct-purchase checkout (also used by the cart). Prices shown here are
 // read from the database; the final amount is computed again by POST
 // /api/orders. Guests are sent to log in and brought straight back.
-export default async function CheckoutPage({ searchParams }) {
-  const { lang, c } = getCopy();
+export default async function CheckoutPage(props) {
+  const searchParams = await props.searchParams;
+  const { lang, c } = await getCopy();
   const raw = String(searchParams?.courses || searchParams?.course || '');
   const ids = [...new Set(raw.split(',').map((x) => parseInt(x, 10)).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 20);
   const session = await currentSession();

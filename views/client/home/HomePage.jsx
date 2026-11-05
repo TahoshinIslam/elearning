@@ -19,7 +19,7 @@ import { abs } from '@/lib/seo';
 export const metadata = { alternates: { canonical: abs('/') } };
 
 export default async function HomePage() {
-  const { lang, c } = getCopy();
+  const { lang, c } = await getCopy();
   const session = await currentSession();
   const ctx = await catalogContext();
   const [featured, fresh, upcoming, popular, facets, stats, owned, instructors, cms, slides, classLevels, paths] = await Promise.all([

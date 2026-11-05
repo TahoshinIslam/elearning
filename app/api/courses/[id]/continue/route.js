@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 
 // Kept for existing links/clients: resolves the course by id and returns the
 // same learner outline as GET /api/learn/[slug] (with resumeLessonId).
-export async function GET(request, { params }) {
+export async function GET(request, props) {
+  const params = await props.params;
   try {
     const session = await requireUser();
     const course = await getCourseContext(Number(params.id));

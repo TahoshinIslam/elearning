@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request) {
   try {
     const { email } = await request.json();
-    rateLimit(`forgot:${clientIp()}`, LIMITS.forgot);
+    rateLimit(`forgot:${(await clientIp())}`, LIMITS.forgot);
     const token = await createResetToken(email);
     const devLinks = process.env.NODE_ENV !== 'production' && process.env.AUTH_DEV_RESET_LINKS === 'true';
     if (token) logger.info('password_reset_requested', { delivered: false, reason: 'email_provider_not_configured' });

@@ -5,7 +5,8 @@ import { getVideoStatus } from '@/lib/videoRepo';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request, { params }) {
+export async function GET(request, props) {
+  const params = await props.params;
   try {
     return NextResponse.json(await getVideoStatus(await requireUser(), Number(params.id)));
   } catch (e) { return errResponse(e); }

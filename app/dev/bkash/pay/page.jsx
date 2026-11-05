@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'bKash simulator (development)', robots: { index: false } };
 
 // DEVELOPMENT ONLY hosted payment page for the local bKash simulator.
-export default function SimulatorPage({ searchParams }) {
+export default async function SimulatorPage(props) {
+  const searchParams = await props.searchParams;
   if (!simulatorEnabled()) notFound();
   const payment = simGetPayment(String(searchParams.paymentID || ''));
   return (

@@ -8,10 +8,11 @@ export const dynamic = 'force-dynamic';
 
 // Client-reported playback failures → structured server log (no URLs or
 // tokens are accepted or logged, only the media error code and context).
-export async function POST(request, { params }) {
+export async function POST(request, props) {
+  const params = await props.params;
   try {
     const session = await currentSession();
-    rateLimit(`playback-error:${session?.id || clientIp()}`, { limit: 30, windowMs: 10 * 60_000 });
+    rateLimit(`playback-error:${session?.id || (await clientIp())}`, { limit: 30, windowMs: 10 * 60_000 });
     const body = await request.json().catch(() => ({}));
     logger.warn('video_playback_error', {
       lessonId: Number(params.id),

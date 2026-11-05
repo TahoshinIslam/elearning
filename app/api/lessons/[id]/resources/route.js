@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 
 // GET → resources the viewer may use (lesson access re-checked);
 //       ?manage=1 → staff view including pending uploads.
-export async function GET(request, { params }) {
+export async function GET(request, props) {
+  const params = await props.params;
   try {
     const id = Number(params.id);
     if (request.nextUrl.searchParams.get('manage') === '1') return NextResponse.json(await listResourcesForStaff(await requireUser(), id));
@@ -17,7 +18,8 @@ export async function GET(request, { params }) {
 }
 
 // POST { kind:'link', title, url } | { kind:'file', title, fileName, contentType, size } (course managers)
-export async function POST(request, { params }) {
+export async function POST(request, props) {
+  const params = await props.params;
   try {
     const session = await requireUser();
     rateLimit(`upload:${session.id}`, LIMITS.upload);
@@ -29,14 +31,16 @@ export async function POST(request, { params }) {
 }
 
 // PATCH { resourceId } → confirm a file upload completed
-export async function PATCH(request, { params }) {
+export async function PATCH(request, props) {
+  const params = await props.params;
   try {
     const body = await request.json();
     return NextResponse.json(await confirmResourceUpload(await requireUser(), Number(params.id), body.resourceId));
   } catch (e) { return errResponse(e); }
 }
 
-export async function DELETE(request, { params }) {
+export async function DELETE(request, props) {
+  const params = await props.params;
   try {
     const body = await request.json();
     return NextResponse.json(await deleteResource(await requireUser(), Number(params.id), body.resourceId));

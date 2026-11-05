@@ -9,7 +9,8 @@ export const dynamic = 'force-dynamic';
 // Course managers only (owner/superadmin, or the course's own instructor) —
 // enforced in lib/videoRepo.js via lib/access.js. Validates type and size
 // before minting a signed upload URL.
-export async function POST(request, { params }) {
+export async function POST(request, props) {
+  const params = await props.params;
   try {
     const session = await requireUser();
     rateLimit(`upload:${session.id}`, LIMITS.upload);

@@ -8,13 +8,13 @@ import { getCopy } from '@/lib/lang';
 import { num } from '@/lib/copy';
 import { abs } from '@/lib/seo';
 
-export function generateMetadata() {
-  const { c } = getCopy();
+export async function generateMetadata() {
+  const { c } = await getCopy();
   return { title: c.pathsTitle, description: c.pathsWhat, alternates: { canonical: abs('/paths') } };
 }
 
 export default async function PathsPage() {
-  const { lang, c } = getCopy();
+  const { lang, c } = await getCopy();
   const paths = await getPublicPaths();
   return (
     <>

@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 
 // Access-checked download: returns a short-lived signed URL (never the
 // storage key). ?redirect=1 sends the browser straight to it.
-export async function GET(request, { params }) {
+export async function GET(request, props) {
+  const params = await props.params;
   try {
     const result = await getResourceDownload(await currentSession(), Number(params.id));
     if (request.nextUrl.searchParams.get('redirect') === '1') return NextResponse.redirect(new URL(result.url, request.url));

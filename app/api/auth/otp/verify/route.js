@@ -15,12 +15,12 @@ export const dynamic = 'force-dynamic';
 export async function POST(request) {
   try {
     const { email, code, purpose } = await request.json();
-    rateLimit(`otpv:ip:${clientIp()}`, LIMITS.login);
+    rateLimit(`otpv:ip:${(await clientIp())}`, LIMITS.login);
     const user = await verifyOtp(email, purpose === 'reset' ? 'reset' : 'login', code);
     if (purpose === 'reset') {
       return NextResponse.json({ ok: true, ticket: signToken({ op: 'pwreset', uid: user.id, sv: Number(user.session_version || 0) }, 600) });
     }
-    await linkVisitorToUser(visitorIdFromCookies(), user.id).catch(() => {});
+    await linkVisitorToUser((await visitorIdFromCookies()), user.id).catch(() => {});
     await recordAudit({ session: { id: user.id, role: user.role }, action: 'login_otp', targetType: 'user', targetId: user.id });
     const session = sessionFromUser(user);
     const res = NextResponse.json({ user: session });

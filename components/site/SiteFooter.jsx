@@ -7,7 +7,7 @@ import { getCopy } from '@/lib/lang';
 
 // Server component: support contact comes from the admin-managed site settings.
 export default async function SiteFooter() {
-  const { c, lang } = getCopy();
+  const { c, lang } = await getCopy();
   const settings = await getSettings().catch(() => ({}));
   const year = new Date().getFullYear();
   const bn = lang !== 'en';

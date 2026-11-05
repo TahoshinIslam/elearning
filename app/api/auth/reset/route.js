@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
-    rateLimit(`reset:${clientIp()}`, LIMITS.reset);
+    rateLimit(`reset:${(await clientIp())}`, LIMITS.reset);
     const { token, password } = await request.json();
     await resetPasswordWithToken(token, password);
     return NextResponse.json({ ok: true });

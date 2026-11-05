@@ -38,7 +38,9 @@ export default function Tracker() {
     };
     const referrer = first.current ? document.referrer || undefined : undefined;
     first.current = false;
-    track('pageview', { ...utm, referrer });
+    // analytics never competes with first paint: send when the browser is idle
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1200));
+    idle(() => track('pageview', { ...utm, referrer }));
     if (pathname === '/courses' && params.get('q')) track('search', { category: params.get('category') || undefined });
     try { sessionStorage.setItem('leo_pv', String(Number(sessionStorage.getItem('leo_pv') || 0) + 1)); } catch { /* ignore */ }
   }, [pathname, params]);

@@ -9,7 +9,8 @@ export const runtime = 'nodejs';
 // server-side entitlement check (lib/access.js) and expires in minutes; a
 // copied URL stops working on its own. Private + no-store so no shared
 // cache ever holds paid content.
-export async function GET(request, { params }) {
+export async function GET(request, props) {
+  const params = await props.params;
   if (currentProvider() !== 'local') return new Response('Not found', { status: 404 });
   const payload = verifyToken(params.token);
   if (!payload || payload.op !== 'get' || !payload.k) return new Response('Link expired', { status: 403 });

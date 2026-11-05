@@ -11,17 +11,19 @@ export const dynamic = 'force-dynamic';
 // (lib/access.js) re-derives entitlement on every call: preview only for
 // is_free lessons of published courses, otherwise an active enrollment or
 // course-manager role. The returned URL is short-lived and signed.
-export async function GET(request, { params }) {
+export async function GET(request, props) {
+  const params = await props.params;
   try {
     const session = await currentSession();
-    rateLimit(`playback:${session?.id || clientIp()}`, LIMITS.playback);
+    rateLimit(`playback:${session?.id || (await clientIp())}`, LIMITS.playback);
     return NextResponse.json(await getPlaybackInfo(session, Number(params.id)));
   } catch (e) { return errResponse(e); }
 }
 
 // Course manager confirms an upload finished (after PUTting the file to the
 // signed upload URL from /upload-url). The object's existence is verified.
-export async function POST(request, { params }) {
+export async function POST(request, props) {
+  const params = await props.params;
   try {
     const session = await requireUser();
     const body = await request.json();
@@ -29,7 +31,8 @@ export async function POST(request, { params }) {
   } catch (e) { return errResponse(e); }
 }
 
-export async function DELETE(request, { params }) {
+export async function DELETE(request, props) {
+  const params = await props.params;
   try {
     const session = await requireUser();
     return NextResponse.json(await removeVideo(session, Number(params.id)));

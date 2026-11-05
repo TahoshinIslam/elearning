@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request) {
   try {
     const { email, password } = await request.json();
-    rateLimit(`login:ip:${clientIp()}`, LIMITS.login);
+    rateLimit(`login:ip:${(await clientIp())}`, LIMITS.login);
     rateLimit(`login:email:${String(email || '').trim().toLowerCase()}`, LIMITS.login);
     const user = await findUserByEmail(email);
     // Same error whether the email is unknown or the password is wrong.
@@ -24,7 +24,7 @@ export async function POST(request) {
       throw new HttpError(403, { error: 'account_disabled' });
     }
 
-    await linkVisitorToUser(visitorIdFromCookies(), user.id).catch(() => {});
+    await linkVisitorToUser((await visitorIdFromCookies()), user.id).catch(() => {});
     const session = sessionFromUser(user);
     const res = NextResponse.json({ user: session });
     setSessionCookie(res, session);

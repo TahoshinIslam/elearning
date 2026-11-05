@@ -9,7 +9,8 @@ import { categoryLabel } from '@/lib/categoryLabel';
 import { abs } from '@/lib/seo';
 
 
-export async function generateMetadata({ params }) {
+export async function generateMetadata(props) {
+  const params = await props.params;
   const t = await getPublicInstructor(params.id, { withCourses: false });
   if (!t) return { robots: { index: false } };
   return { title: t.name, description: (t.bio || t.title || '').slice(0, 160), alternates: { canonical: abs(`/instructor/${t.id}`) } };
@@ -17,8 +18,9 @@ export async function generateMetadata({ params }) {
 
 // Public instructor profile: no contact details, no seed rating numbers —
 // only published courses and real learner counts.
-export default async function InstructorPage({ params }) {
-  const { lang, c } = getCopy();
+export default async function InstructorPage(props) {
+  const params = await props.params;
+  const { lang, c } = await getCopy();
   const t = await getPublicInstructor(params.id);
   if (!t) notFound();
   const owned = await getOwnedCourseIds(await currentSession());

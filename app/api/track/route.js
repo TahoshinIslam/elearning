@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 // Always answers 204 so a tracking hiccup can never break a page.
 export async function POST(request) {
   try {
-    const vid = visitorIdFromCookies();
+    const vid = await visitorIdFromCookies();
     if (!vid) return new NextResponse(null, { status: 204 });
     rateLimit(`track:${vid}`, { limit: 400, windowMs: 10 * 60_000 });
     const body = await request.json().catch(() => ({}));

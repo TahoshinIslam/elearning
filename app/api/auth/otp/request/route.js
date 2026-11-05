@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request) {
   try {
     const { email, purpose } = await request.json();
-    rateLimit(`otp:ip:${clientIp()}`, LIMITS.forgot);
+    rateLimit(`otp:ip:${(await clientIp())}`, LIMITS.forgot);
     return NextResponse.json(await requestOtp(email, purpose));
   } catch (e) { return errResponse(e); }
 }

@@ -12,7 +12,7 @@ export async function GET(request) {
     const sp = request.nextUrl.searchParams;
     const kind = sp.get('kind') === 'slide' ? 'slide' : 'popup';
     const page = ['home', 'catalog', 'course', 'any'].includes(sp.get('page')) ? sp.get('page') : 'home';
-    const visitor = await getVisitor(visitorIdFromCookies()).catch(() => null);
+    const visitor = await getVisitor((await visitorIdFromCookies())).catch(() => null);
     return NextResponse.json(await getActiveCampaigns({ kind, page, session: await currentSession(), visitor }));
   } catch (e) { return errResponse(e); }
 }

@@ -2169,3 +2169,34 @@ main#main.status-screen { animation: none; }
 .status-shapes i:nth-child(4) { width: 54px; height: 54px; left: 12%; bottom: 10%; background: var(--c-pink); transform: rotate(30deg); }
 @media (max-width: 639px) { .status-shapes { display: none; } .status-code span { box-shadow: 5px 5px 0 var(--ink); } }
 @media (prefers-reduced-motion: reduce) { .status-code span { animation: none; } }
+
+/* ---------- maintenance countdown ---------- */
+.maint-icon { width: 96px; height: 96px; display: grid; place-items: center; border: var(--bw) solid var(--ink); background: var(--c-yellow); box-shadow: var(--hard-2); animation: maintSpin 6s linear infinite; }
+@keyframes maintSpin { to { transform: rotate(360deg); } }
+.countdown { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(8px, 2vw, 16px); margin: 10px 0; }
+.cd-unit { display: grid; justify-items: center; gap: 6px; min-width: clamp(74px, 16vw, 128px); padding: 14px 10px 10px; border: var(--bw) solid var(--ink); background: var(--surface); box-shadow: var(--hard-2); }
+.cd-unit:nth-child(4n+1) { background: var(--c-yellow); } .cd-unit:nth-child(4n+2) { background: var(--c-cyan); } .cd-unit:nth-child(4n+3) { background: var(--c-lime); } .cd-unit:nth-child(4n+4) { background: var(--c-pink); }
+.cd-num { font-family: var(--font-display); font-size: clamp(38px, 8vw, 72px); line-height: 1; }
+.cd-label { font-weight: 700; text-transform: uppercase; font-size: 12.5px; }
+.maint-social { justify-content: center; }
+.maint-social a { color: var(--ink); border-color: var(--ink); }
+.maint-strip { position: relative; z-index: 61; padding: 8px 16px; text-align: center; font-weight: 700; font-size: 13.5px; background: var(--c-orange); border-bottom: var(--bw) solid var(--ink); }
+.maint-strip a { text-decoration: underline; }
+
+/* ---------- splash + route progress ---------- */
+.splash { position: fixed; inset: 0; z-index: 400; display: grid; place-content: center; justify-items: center; gap: 18px; background: var(--bg); animation: splashOut .35s var(--ease-in) .9s forwards; pointer-events: none; }
+.splash-mark { animation: splashStamp .55s var(--ease-out) backwards; }
+.splash-mark svg { border: var(--bw) solid var(--ink); box-shadow: var(--hard-2); }
+.splash-word { font-family: var(--font-display); font-size: 28px; display: flex; gap: 10px; align-items: center; animation: brutRise .45s var(--ease-out) .15s backwards; }
+.splash-bar { width: 180px; height: 10px; border: var(--bw-sm) solid var(--ink); background: var(--surface); }
+.splash-bar span { display: block; height: 100%; background: var(--c-pink); animation: splashFill .85s var(--ease-in-out) forwards; transform-origin: left; }
+@keyframes splashStamp { 0% { transform: scale(2.2) rotate(-12deg); opacity: 0; } 70% { transform: scale(.92) rotate(2deg); opacity: 1; } 100% { transform: none; } }
+@keyframes splashFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes splashOut { to { opacity: 0; visibility: hidden; } }
+.route-progress { position: fixed; top: 0; left: 0; right: 0; z-index: 300; height: 4px; pointer-events: none; }
+.route-progress span { display: block; height: 100%; background: var(--c-pink); border-bottom: 1px solid var(--ink); transform-origin: left; transform: scaleX(0); }
+.route-progress.is-loading span { animation: rpGrow 8s cubic-bezier(.1,.7,.2,1) forwards; }
+.route-progress.is-done span { transform: scaleX(1); opacity: 0; transition: transform .2s ease-out, opacity .3s ease .15s; }
+@keyframes rpGrow { from { transform: scaleX(0); } to { transform: scaleX(.9); } }
+@media (prefers-reduced-motion: reduce) { .splash { animation-delay: .1s; } .maint-icon { animation: none; } }
+.kpi .delta { justify-self: start; }

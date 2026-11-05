@@ -11,7 +11,8 @@ export const runtime = 'nodejs';
 // token (minted by a staff-only route) pins the exact object key, the
 // declared content type and a byte ceiling; the body is streamed to a temp
 // file and only renamed into place once fully received.
-export async function PUT(request, { params }) {
+export async function PUT(request, props) {
+  const params = await props.params;
   if (currentProvider() !== 'local') return new Response('Not found', { status: 404 });
   const payload = verifyToken(params.token);
   if (!payload || payload.op !== 'put' || !payload.k) return Response.json({ error: 'upload_link_expired' }, { status: 403 });

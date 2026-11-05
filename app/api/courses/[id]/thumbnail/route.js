@@ -4,7 +4,8 @@ import { errResponse, confirmThumbnail } from '@/lib/repo';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request, { params }) {
+export async function POST(request, props) {
+  const params = await props.params;
   try {
     await requireStaffSection('courses', 'manage');
     const body = await request.json();

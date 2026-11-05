@@ -15,7 +15,7 @@ export async function POST(request) {
     rateLimit(`order:${session.id}`, LIMITS.order);
     const result = await createOrder(session, await request.json());
     // revenue attribution: which source / ad campaign this purchase came from
-    if (result?.order?.id) await attributeOrder(result.order.id, visitorIdFromCookies()).catch(() => {});
+    if (result?.order?.id) await attributeOrder(result.order.id, (await visitorIdFromCookies())).catch(() => {});
     return NextResponse.json(result, { status: 201 });
   } catch (e) {
     return errResponse(e);

@@ -6,8 +6,10 @@ const nextConfig = {
   // folder instead of fighting another dev server over `.next`.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
-  // instrumentation.js: process-level error logging (stable in Next 15)
-  experimental: { instrumentationHook: true }
+  // React Compiler: automatic memoisation of client components (fewer re-renders).
+  reactCompiler: true,
+  // Smaller client bundles for the packages we import from.
+  experimental: { optimizePackageImports: ['@reduxjs/toolkit', 'react-redux'] }
 };
 
 export default nextConfig;

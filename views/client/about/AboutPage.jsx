@@ -5,7 +5,7 @@ import LegalPage from '@/components/LegalPage';
 export const metadata = { title: 'About' };
 
 export default async function AboutPage() {
-  const lang = getLang();
+  const lang = await getLang();
   const centerDisplay = (await getSettings().catch(() => ({}))).siteTitle || 'Leo Learning';
   const bn = lang === 'bn';
 

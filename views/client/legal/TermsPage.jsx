@@ -3,8 +3,8 @@ import LegalPage from '@/components/LegalPage';
 
 export const metadata = { title: 'Terms' };
 
-export default function TermsPage() {
-  const lang = getLang();
+export default async function TermsPage() {
+  const lang = await getLang();
   const bn = lang === 'bn';
 
   return (

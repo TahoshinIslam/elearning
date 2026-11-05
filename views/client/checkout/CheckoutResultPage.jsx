@@ -21,8 +21,9 @@ const LOOK = {
 
 // The status shown here is read from the server for the signed-in buyer's
 // own order — never from the URL. Nothing on this page grants access.
-export default async function CheckoutResultPage({ searchParams }) {
-  const { lang, c } = getCopy();
+export default async function CheckoutResultPage(props) {
+  const searchParams = await props.searchParams;
+  const { lang, c } = await getCopy();
   const session = await currentSession();
   const orderId = parseInt(searchParams?.order, 10);
   if (!session) redirect(`/login?returnTo=${encodeURIComponent(`/checkout/result${orderId ? `?order=${orderId}` : ''}`)}`);

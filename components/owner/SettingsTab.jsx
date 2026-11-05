@@ -7,6 +7,14 @@ import { useFlash } from '@/components/ui/motion';
 
 const BADGE_DEFAULTS = { badgeTopRatedMin: '4.5', badgeTopRatedReviews: '10', badgeNewDays: '30' };
 
+const toLocalInput = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
 export default function SettingsTab() {
   const { t, lang, api, showToast } = useApp();
   const en = lang === 'en';
@@ -130,7 +138,28 @@ export default function SettingsTab() {
           <section className="surface surface-pad stack" aria-labelledby="set-maint">
             <h2 id="set-maint" className="h4">{t.setMaintenance}</h2>
             <label className="check"><input type="checkbox" checked={maint} onChange={(e) => setS((x) => ({ ...x, maintenance: e.target.checked ? '1' : '0' }))} />{maint ? t.setMaintenanceOn : t.setMaintenanceOff}</label>
-            {maint && <div className="field"><label htmlFor="set-mm">{t.setMaintenanceMsg}</label><textarea id="set-mm" className="textarea" rows={3} value={s.maintenanceMsg || ''} onChange={set('maintenanceMsg')} /></div>}
+            {maint && (
+              <>
+                <div className="field"><label htmlFor="set-mt">{en ? 'Headline' : 'শিরোনাম'}</label><input id="set-mt" className="input" maxLength={120} value={s.maintenanceTitle || ''} onChange={set('maintenanceTitle')} placeholder={en ? 'We’re upgrading the classroom' : 'আমরা ক্লাসরুম আপগ্রেড করছি'} /></div>
+                <div className="field"><label htmlFor="set-mm">{t.setMaintenanceMsg}</label><textarea id="set-mm" className="textarea" rows={3} value={s.maintenanceMsg || ''} onChange={set('maintenanceMsg')} /></div>
+                <div className="field">
+                  <label htmlFor="set-mu">{en ? 'Back online at (countdown)' : 'আবার চালু হবে (কাউন্টডাউন)'}</label>
+                  <input id="set-mu" className="input" type="datetime-local" value={toLocalInput(s.maintenanceUntil)} onChange={(e) => setS((x) => ({ ...x, maintenanceUntil: e.target.value ? new Date(e.target.value).toISOString() : '' }))} />
+                  <div className="cluster" style={{ '--gap': '6px' }}>
+                    {[[15, en ? '+15 min' : '+১৫ মিনিট'], [60, en ? '+1 hour' : '+১ ঘণ্টা'], [240, en ? '+4 hours' : '+৪ ঘণ্টা'], [1440, en ? '+1 day' : '+১ দিন']].map(([m, l]) => (
+                      <button key={m} type="button" className="btn btn-secondary btn-sm" data-confirm="off" onClick={() => setS((x) => ({ ...x, maintenanceUntil: new Date(Date.now() + m * 60000).toISOString() }))}>{l}</button>
+                    ))}
+                    {s.maintenanceUntil && <button type="button" className="btn btn-ghost btn-sm" data-confirm="off" onClick={() => setS((x) => ({ ...x, maintenanceUntil: '' }))}>{en ? 'No timer' : 'টাইমার ছাড়া'}</button>}
+                  </div>
+                  <span className="help">{en ? 'Visitors see a live countdown; the site reopens by itself at this time. Staff can still sign in and work.' : 'দর্শকরা লাইভ কাউন্টডাউন দেখবেন; এই সময়ে সাইট নিজে থেকেই খুলে যাবে। স্টাফরা লগইন করে কাজ করতে পারবেন।'}</span>
+                </div>
+              </>
+            )}
+          </section>
+          <section className="surface surface-pad stack" aria-labelledby="set-pre">
+            <h2 id="set-pre" className="h4">{en ? 'Loading animation' : 'লোডিং অ্যানিমেশন'}</h2>
+            <label className="check"><input type="checkbox" checked={s.preloader !== 'off'} onChange={(e) => setS((x) => ({ ...x, preloader: e.target.checked ? 'on' : 'off' }))} />{en ? 'Show the logo splash when a visitor opens the site (once per visit)' : 'সাইট খোলার সময় লোগো অ্যানিমেশন দেখাবে (প্রতি ভিজিটে একবার)'}</label>
+            <span className="help">{en ? 'Page-to-page navigation always shows a slim progress bar.' : 'এক পেজ থেকে আরেক পেজে যাওয়ার সময় সবসময় একটি সরু প্রগ্রেস বার দেখায়।'}</span>
           </section>
           <div className="row" style={{ '--gap': '10px' }}>
             <button type="submit" className={`btn btn-primary ${flash && !dirty ? 'is-success' : ''}`} disabled={busy || (!dirty && !flash)} aria-busy={busy}>

@@ -6,7 +6,8 @@ import { setManualCompletion } from '@/lib/videoRepo';
 export const dynamic = 'force-dynamic';
 
 // Explicit "mark as complete" for reading lessons (no watch tracking).
-export async function POST(request, { params }) {
+export async function POST(request, props) {
+  const params = await props.params;
   try {
     const session = await requireUser();
     const body = await request.json();

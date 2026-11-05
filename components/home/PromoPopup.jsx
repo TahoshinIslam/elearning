@@ -60,7 +60,10 @@ export default function PromoPopup({ lang }) {
     try { if (sessionStorage.getItem('leo_popup_shown')) return undefined; } catch { /* ignore */ }
     let live = true;
     let stop = () => {};
-    fetch(`/api/campaigns/active?kind=popup&page=${pageOf(pathname)}`, { cache: 'no-store' })
+    let idleId;
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
+    // look for a campaign only once the page is interactive and idle
+    idleId = idle(() => fetch(`/api/campaigns/active?kind=popup&page=${pageOf(pathname)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : []))
       .then((list) => {
         if (!live || !Array.isArray(list)) return;
@@ -78,8 +81,8 @@ export default function PromoPopup({ lang }) {
           track('popup_impression', { refId: String(due.id) });
         });
       })
-      .catch(() => {});
-    return () => { live = false; stop(); };
+      .catch(() => {}), { timeout: 4000 });
+    return () => { live = false; stop(); (window.cancelIdleCallback || clearTimeout)(idleId); };
   }, [pathname]);
 
   const close = () => { if (popup) track('popup_dismiss', { refId: String(popup.id) }); setOpen(false); };

@@ -13,7 +13,8 @@ import { categoryLabel } from '@/lib/categoryLabel';
 import { abs } from '@/lib/seo';
 
 
-export async function generateMetadata({ params }) {
+export async function generateMetadata(props) {
+  const params = await props.params;
   const camp = await getPublicCampaign(params.slug);
   if (!camp) return { robots: { index: false } };
   return { title: camp.title, description: (camp.body || '').slice(0, 180), alternates: { canonical: abs(`/campaign/${camp.slug}`) } };
@@ -30,8 +31,9 @@ async function offerCourses(offer) {
   return all.filter((c) => c.listPrice > 0).slice(0, 24);
 }
 
-export default async function CampaignPage({ params }) {
-  const { lang, c } = getCopy();
+export default async function CampaignPage(props) {
+  const params = await props.params;
+  const { lang, c } = await getCopy();
   const camp = await getPublicCampaign(params.slug);
   if (!camp) notFound();
   const session = await currentSession();

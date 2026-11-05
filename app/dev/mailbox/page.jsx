@@ -11,7 +11,8 @@ const dt = (v) => new Date(v).toLocaleString('en-GB', { dateStyle: 'medium', tim
 
 // DEMO ONLY. Mail is not delivered yet (lib/mailer.js); every message the app
 // "sends" — sign-in and password-reset codes — shows up here instead.
-export default async function MailboxPage({ searchParams }) {
+export default async function MailboxPage(props) {
+  const searchParams = await props.searchParams;
   if (!demoMailEnabled()) notFound();
   const to = typeof searchParams?.to === 'string' ? searchParams.to : undefined;
   const mails = await listDemoMail({ to, limit: 30 });

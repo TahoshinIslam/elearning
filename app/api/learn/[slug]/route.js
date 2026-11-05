@@ -6,7 +6,8 @@ import { getLearnerCourse } from '@/lib/learningRepo';
 export const dynamic = 'force-dynamic';
 
 // Course player outline for the signed-in learner (or the course's manager).
-export async function GET(request, { params }) {
+export async function GET(request, props) {
+  const params = await props.params;
   try { return NextResponse.json(await getLearnerCourse(await requireUser(), params.slug)); }
   catch (e) { return errResponse(e); }
 }
