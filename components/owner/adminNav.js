@@ -5,12 +5,13 @@ export const ADMIN_GROUPS = [
   { key: 'sales', bn: 'বিক্রি ও প্রচার', en: 'Sales & promotion', items: ['payments', 'offers', 'coupons', 'campaigns', 'affiliates'] },
   { key: 'learners', bn: 'শিক্ষার্থী', en: 'Learners', items: ['students', 'enroll', 'reviews', 'messages'] },
   { key: 'teaching', bn: 'ক্লাস ও মূল্যায়ন', en: 'Teaching', items: ['batches', 'teachers', 'classes', 'attendance', 'submissions', 'quizzes', 'fees'] },
-  { key: 'system', bn: 'সিস্টেম', en: 'System', items: ['reports', 'users', 'access', 'announce', 'settings'] }
+  { key: 'system', bn: 'সিস্টেম', en: 'System', items: ['reports', 'users', 'access', 'security', 'announce', 'settings'] }
 ];
 
 export const ADMIN_SECTIONS = {
   analytics:   { icon: 'bar', bn: ['অ্যানালিটিক্স', 'আয়, ভর্তি, শেখা, ট্রাফিক ও বিজ্ঞাপনের ফলাফল'], en: ['Analytics', 'Revenue, enrollment, learning, traffic and ad results'] },
   activity:    { icon: 'clock', bn: ['সাম্প্রতিক কার্যক্রম', 'প্ল্যাটফর্মে কী ঘটছে — এক টাইমলাইনে'], en: ['Recent activity', 'Everything happening on the platform, in one timeline'] },
+  security:    { icon: 'shield', bn: ['নিরাপত্তা', 'ব্লক করা IP ও অ্যাকাউন্ট, রেট লিমিট ও সন্দেহজনক কার্যকলাপ'], en: ['Security', 'Blocked IPs and accounts, rate limits and suspicious activity'] },
   access:      { icon: 'lock', bn: ['অ্যাক্সেস ও অনুমতি', 'অ্যাকাউন্ট তৈরি ও কে কী দেখবে / করবে'], en: ['Access & permissions', 'Create accounts and decide who sees and does what'] },
   dash:        { icon: 'grid', bn: ['ড্যাশবোর্ড', 'প্ল্যাটফর্মের বর্তমান অবস্থা'], en: ['Dashboard', 'Where the platform stands today'] },
   courses:     { icon: 'book', bn: ['কোর্স', 'কোর্স তৈরি, পাঠ্যক্রম, মিডিয়া, মূল্য ও প্রকাশ'], en: ['Courses', 'Create courses, curriculum, media, pricing and publishing'] },

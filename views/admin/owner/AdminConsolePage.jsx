@@ -45,9 +45,10 @@ const TeacherQuizzes = load(() => import('@/components/teacher/TeacherQuizzes'))
 const AnalyticsTab = load(() => import('@/components/admin/AnalyticsTab'));
 const ActivityTab = load(() => import('@/components/admin/ActivityTab'));
 const AccessTab = load(() => import('@/components/admin/AccessTab'));
+const SecurityTab = load(() => import('@/components/admin/SecurityTab'));
 
 const COMPONENTS = {
-  dash: DashboardTab, analytics: AnalyticsTab, activity: ActivityTab, access: AccessTab, courses: CoursesTab, categories: CategoriesTab, levels: ClassLevelsTab, paths: PathsTab,
+  dash: DashboardTab, analytics: AnalyticsTab, activity: ActivityTab, access: AccessTab, security: SecurityTab, courses: CoursesTab, categories: CategoriesTab, levels: ClassLevelsTab, paths: PathsTab,
   batches: BatchesTab, students: StudentsTab, teachers: TeachersTab, enroll: EnrollmentsTab,
   classes: TeacherClasses, attendance: TeacherAttendance, submissions: TeacherSubmissions, quizzes: TeacherQuizzes,
   fees: FeesTab, payments: PaymentsTab, offers: OffersTab, coupons: CouponsTab, campaigns: CampaignsTab, affiliates: AffiliatesTab,
