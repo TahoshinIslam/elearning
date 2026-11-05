@@ -8,12 +8,12 @@ const T = {
   bn: {
     drop: 'ফাইল এখানে টেনে এনে ছাড়ুন', dropMany: 'ফাইলগুলো এখানে টেনে এনে ছাড়ুন', or: 'অথবা', choose: 'কম্পিউটার থেকে বেছে নিন', dropNow: 'ছেড়ে দিন — আপলোড শুরু হবে',
     badType: 'এই ধরনের ফাইল নেওয়া হয় না', tooBig: (m) => `ফাইলটি ${m}-এর বেশি`, queued: 'অপেক্ষায়', uploading: 'আপলোড হচ্ছে', verifying: 'যাচাই হচ্ছে…',
-    done: 'সম্পন্ন', failed: 'ব্যর্থ', cancelled: 'বাতিল', cancel: 'বাতিল', retry: 'আবার চেষ্টা', clear: 'তালিকা মুছুন', remove: 'সরান', onlyOne: 'একবারে একটি ফাইল'
+    done: 'সম্পন্ন', failed: 'ব্যর্থ', browse: 'ফাইল বাছুন', upTo: (m) => `সর্বোচ্চ ${m}`, why: 'কারণ', cancelled: 'বাতিল', cancel: 'বাতিল', retry: 'আবার চেষ্টা', clear: 'তালিকা মুছুন', remove: 'সরান', onlyOne: 'একবারে একটি ফাইল'
   },
   en: {
     drop: 'Drag a file here', dropMany: 'Drag files here', or: 'or', choose: 'choose from your computer', dropNow: 'Drop to upload',
     badType: 'This file type isn’t accepted', tooBig: (m) => `Larger than ${m}`, queued: 'Queued', uploading: 'Uploading', verifying: 'Verifying…',
-    done: 'Done', failed: 'Failed', cancelled: 'Cancelled', cancel: 'Cancel', retry: 'Retry', clear: 'Clear list', remove: 'Remove', onlyOne: 'One file at a time'
+    done: 'Done', failed: 'Failed', browse: 'Browse files', upTo: (m) => `Up to ${m}`, why: 'Reason', cancelled: 'Cancelled', cancel: 'Cancel', retry: 'Retry', clear: 'Clear list', remove: 'Remove', onlyOne: 'One file at a time'
   }
 };
 
@@ -30,6 +30,27 @@ export function acceptsFile(accept, file) {
 }
 
 let seq = 0;
+
+// Short labels for the accept list (".pdf,image/*" → PDF, IMG) and a colour
+// family per file kind, used by the type tiles and the queue rows.
+const LABEL = { 'image/*': 'IMG', 'video/*': 'VIDEO', 'audio/*': 'AUDIO', 'text/vtt': 'VTT', 'application/pdf': 'PDF', 'application/zip': 'ZIP', 'text/plain': 'TXT', 'text/csv': 'CSV', 'image/jpeg': 'JPG', 'image/png': 'PNG', 'image/webp': 'WEBP', 'video/mp4': 'MP4', 'video/webm': 'WEBM', 'video/quicktime': 'MOV' };
+export function acceptLabels(accept) {
+  if (!accept) return [];
+  const out = accept.split(',').map((r) => r.trim().toLowerCase()).filter(Boolean)
+    .map((r) => (r.startsWith('.') ? r.slice(1).toUpperCase() : LABEL[r] || (r.includes('officedocument') ? (r.includes('word') ? 'DOCX' : r.includes('presentation') ? 'PPTX' : 'XLSX') : null)))
+    .filter(Boolean);
+  return [...new Set(out)];
+}
+const extOf = (name) => (String(name).split('.').pop() || '').slice(0, 4).toUpperCase() || 'FILE';
+export function kindOf(label) {
+  const l = String(label).toUpperCase();
+  if (/^(IMG|JPE?G|PNG|WEBP|GIF|SVG)$/.test(l)) return 'img';
+  if (/^(VIDEO|MP4|WEBM|MOV|M4V|M3U8)$/.test(l)) return 'vid';
+  if (/^(PDF)$/.test(l)) return 'pdf';
+  if (/^(DOCX?|PPTX?|XLSX?|CSV|TXT|VTT)$/.test(l)) return 'doc';
+  if (/^(ZIP|RAR|7Z)$/.test(l)) return 'zip';
+  return 'other';
+}
 
 // Drag-and-drop uploader with a visible queue. Files are validated on the way
 // in (type + size, the server re-checks both), then uploaded one at a time by
@@ -102,6 +123,7 @@ export default function FileDropzone({
   };
   const remove = (item) => setItems((list) => list.filter((x) => x.id !== item.id));
 
+  const labels = acceptLabels(accept);
   const open = () => { if (!disabled) inputRef.current?.click(); };
   const statusText = (x) => ({ queued: t.queued, uploading: `${t.uploading} ${x.progress}%`, verifying: t.verifying, done: t.done, cancelled: t.cancelled, failed: x.error || t.failed })[x.status];
 
@@ -120,22 +142,40 @@ export default function FileDropzone({
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOver(false); }}
         onDrop={(e) => { e.preventDefault(); setOver(false); add(e.dataTransfer.files); }}
       >
+        {!compact && labels.length > 0 && (
+          <span className="fdz-tiles" aria-hidden="true">
+            {labels.slice(0, 3).map((l, i) => <span key={l} className={`fdz-tile k-${kindOf(l)}`} style={{ '--i': i }}>{l}</span>)}
+          </span>
+        )}
         <span className="fdz-icon" aria-hidden="true"><Icon name="upload" size={compact ? 18 : 24} /></span>
         <span className="fdz-text">
           <strong>{over ? t.dropNow : (title || (multiple ? t.dropMany : t.drop))}</strong>
           {!compact && <span className="fdz-or">{t.or} <u>{t.choose}</u></span>}
         </span>
+        {!compact && <span className="btn btn-secondary btn-sm fdz-browse" aria-hidden="true"><Icon name="file" size={15} />{t.browse}</span>}
+        {!compact && (labels.length > 0 || maxBytes) && (
+          <span className="fdz-chips" aria-hidden="true">
+            {labels.slice(0, 6).map((l) => <span key={l}>{l}</span>)}
+            {maxBytes ? <span className="is-size">{t.upTo(fmtBytes(maxBytes))}</span> : null}
+          </span>
+        )}
       </div>
       {hint && <p id={`${inputId}-hint`} className="help fdz-hint">{hint}{!multiple ? ` · ${t.onlyOne}` : ''}</p>}
       {items.length > 0 && (
         <ul className="fdz-list" aria-live="polite">
           {items.map((x) => (
             <li key={x.id} className={`fdz-item is-${x.status}`}>
-              <Icon name={x.status === 'done' ? 'checkCircle' : x.status === 'failed' ? 'alert' : 'file'} size={16} />
+              <span className={`fdz-ext k-${kindOf(extOf(x.name))}`} aria-hidden="true">
+                {x.status === 'done' ? <Icon name="check" size={16} /> : x.status === 'failed' ? <Icon name="alert" size={16} /> : extOf(x.name)}
+              </span>
               <div className="fdz-meta">
-                <div className="fdz-name"><span className="clamp-1">{x.name}</span><span className="muted">{fmtBytes(x.size)}</span></div>
-                {(x.status === 'uploading' || x.status === 'verifying') && <div className="progress progress-sm"><span style={{ width: `${x.progress}%` }} /></div>}
-                <div className={`fdz-status ${x.status === 'failed' ? 'field-error' : 'muted'}`}>{statusText(x)}</div>
+                <div className="fdz-name"><span className="clamp-1">{x.name}</span><span className="muted tabular">{fmtBytes(x.size)}</span></div>
+                {(x.status === 'uploading' || x.status === 'verifying') && (
+                  <div className="fdz-progress"><div className="fdz-bar"><span style={{ width: `${x.progress}%` }} /></div><strong className="tabular">{x.progress}%</strong></div>
+                )}
+                <div className={`fdz-status ${x.status === 'failed' ? 'is-error' : 'muted'}`} role={x.status === 'failed' ? 'alert' : undefined}>
+                  {x.status === 'failed' ? <><strong>{t.failed}</strong> · {t.why}: {x.error || t.failed}</> : statusText(x)}
+                </div>
               </div>
               <div className="fdz-actions">
                 {(x.status === 'uploading' || x.status === 'queued') && <button type="button" className="btn btn-ghost btn-sm" onClick={() => cancel(x)}>{t.cancel}</button>}

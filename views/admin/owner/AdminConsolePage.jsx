@@ -46,6 +46,7 @@ const AnalyticsTab = load(() => import('@/components/admin/AnalyticsTab'));
 const ActivityTab = load(() => import('@/components/admin/ActivityTab'));
 const AccessTab = load(() => import('@/components/admin/AccessTab'));
 const SecurityTab = load(() => import('@/components/admin/SecurityTab'));
+const ProfileTab = load(() => import('@/components/student/views/AccountView'));
 
 const COMPONENTS = {
   dash: DashboardTab, analytics: AnalyticsTab, activity: ActivityTab, access: AccessTab, security: SecurityTab, courses: CoursesTab, categories: CategoriesTab, levels: ClassLevelsTab, paths: PathsTab,
@@ -53,7 +54,7 @@ const COMPONENTS = {
   classes: TeacherClasses, attendance: TeacherAttendance, submissions: TeacherSubmissions, quizzes: TeacherQuizzes,
   fees: FeesTab, payments: PaymentsTab, offers: OffersTab, coupons: CouponsTab, campaigns: CampaignsTab, affiliates: AffiliatesTab,
   reviews: ReviewsTab, blog: BlogTab, homepage: HomepageTab, messages: MessagesTab, reports: ReportsTab,
-  users: UsersTab, announce: AnnouncementComposer, settings: SettingsTab
+  users: UsersTab, announce: AnnouncementComposer, settings: SettingsTab, profile: ProfileTab
 };
 const NAV_KEY = 'leo_admin_nav_collapsed';
 
@@ -65,7 +66,8 @@ function AdminWorkspace() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const allowed = sectionsForSession(auth);
+  // every staff account can edit its own photo and password
+  const allowed = [...sectionsForSession(auth), 'profile'];
   const requested = params.get('section');
   const active = allowed.includes(requested) ? requested : allowed[0];
   const { open: navOpen, close: closeNav, sidebarRef } = useShellNav();
@@ -87,7 +89,7 @@ function AdminWorkspace() {
       <div className="shell" data-collapsed={collapsed}>
         <aside ref={sidebarRef} className={`sidebar ${navOpen ? 'open' : ''}`} aria-label={en ? 'Admin navigation' : 'অ্যাডমিন নেভিগেশন'}>
           <div className="side-head">
-            <span className="avatar-btn" aria-hidden="true">{String(auth?.name || 'L').charAt(0).toUpperCase()}</span>
+            <span className="avatar-btn" aria-hidden="true">{auth?.avatarUrl ? <img src={auth.avatarUrl} alt="" /> : String(auth?.name || 'L').charAt(0).toUpperCase()}</span>
             <div className="side-head-text">
               <div className="strong" style={{ fontSize: 15 }}>{en ? 'Admin' : 'অ্যাডমিন'}</div>
               <div className="xsmall muted">{auth?.name} · {roleLabel}</div>

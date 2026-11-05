@@ -44,7 +44,7 @@ export default async function RootLayout({ children }) {
   const { lang, c } = await getCopy();
   // Only the fields the UI needs reach the client.
   const initialAuth = session
-    ? { id: session.id, role: session.role, name: session.name, email: session.email, studentId: session.studentId, teacherId: session.teacherId, tenantId: session.tenantId, sections: session.sections, permissions: session.permissions }
+    ? { id: session.id, role: session.role, name: session.name, email: session.email, avatarUrl: session.avatarUrl, studentId: session.studentId, teacherId: session.teacherId, tenantId: session.tenantId, sections: session.sections, permissions: session.permissions }
     : null;
   const settings = await getSettings().catch(() => ({}));
   const maint = maintenanceState(settings);

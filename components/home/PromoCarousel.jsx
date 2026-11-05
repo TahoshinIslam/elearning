@@ -60,7 +60,7 @@ export default function PromoCarousel({ slides, lang }) {
           const active = k === i;
           return (
             <div key={s.id} className={`promo-slide ${active ? 'is-active' : ''}`} data-dir={dir} role="group" aria-roledescription="slide"
-              aria-label={c.slideN(k + 1, n)} aria-hidden={!active} inert={active ? undefined : ''}>
+              aria-label={c.slideN(k + 1, n)} aria-hidden={!active} inert={!active}>
               <div className="promo-copy">
                 {s.offer && (
                   <span className="badge badge-brand promo-offer">

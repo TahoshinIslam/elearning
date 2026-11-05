@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Icon from '@/components/Icon';
+import PasswordInput from '@/components/ui/PasswordInput';
 import { copy } from '@/lib/copy';
 import { safeReturnTo } from '@/lib/safeRedirect';
 import { ROLE_HOME } from '@/lib/rbac';
@@ -83,22 +84,9 @@ function Shell({ title, sub, children, footer, icon = 'user', tone = '' }) {
   );
 }
 
-function PasswordField({ id, label, value, onChange, autoComplete, c, error, hint }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <div style={{ position: 'relative' }}>
-        <input id={id} className="input" type={show ? 'text' : 'password'} value={value} onChange={onChange} autoComplete={autoComplete} required
-          aria-invalid={!!error} aria-describedby={[hint && `${id}-hint`, error && `${id}-err`].filter(Boolean).join(' ') || undefined} style={{ paddingRight: 48 }} />
-        <button type="button" className="btn btn-ghost btn-icon btn-sm" style={{ position: 'absolute', right: 5, top: 5 }} onClick={() => setShow((s) => !s)} aria-label={show ? c.hidePw : c.showPw} aria-pressed={show}>
-          <Icon name={show ? 'eye' : 'lock'} size={17} />
-        </button>
-      </div>
-      {hint && <p id={`${id}-hint`} className="help">{hint}</p>}
-      {error && <p id={`${id}-err`} className="field-error">{error}</p>}
-    </div>
-  );
+function PasswordField({ id, label, value, onChange, autoComplete, error, hint, meter }) {
+  const { lang } = useApp();
+  return <PasswordInput id={id} label={label} value={value} onChange={onChange} autoComplete={autoComplete} error={error} hint={meter ? undefined : hint} lang={lang} meter={meter} />;
 }
 
 const DEMO = [
@@ -219,7 +207,7 @@ export function RegisterForm({ returnTo, referral }) {
           <label htmlFor="phone">{c.phone}</label>
           <input id="phone" className="input" type="tel" inputMode="tel" autoComplete="tel" value={f.phone} onChange={set('phone')} />
         </div>
-        <PasswordField id="password" label={c.password} value={f.password} onChange={set('password')} autoComplete="new-password" c={c} hint={c.pwHint} error={errors.password} />
+        <PasswordField id="password" label={c.password} value={f.password} onChange={set('password')} autoComplete="new-password" c={c} hint={c.pwHint} meter error={errors.password} />
         {error && <div className="notice notice-danger" role="alert"><Icon name="alert" size={18} />{error}</div>}
         <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy} aria-busy={busy}>{busy && <span className="spinner" aria-hidden="true" />}{c.signupBtn}</button>
         <p className="xsmall muted">{c.agreeTerms.replace(/[।.]$/, '')} — <Link href="/terms" className="link">{c.terms}</Link>, <Link href="/privacy" className="link">{c.privacy}</Link></p>
@@ -255,7 +243,7 @@ export function ForgotForm() {
         <div className="stack"><div className="notice notice-success" role="status"><Icon name="checkCircle" size={18} />{o.done}</div><Link href="/login" className="btn btn-primary btn-block">{c.loginBtn}</Link></div>
       ) : ticket ? (
         <form className="stack" onSubmit={setNew} noValidate>
-          <PasswordField id="password" label={c.newPassword} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" c={c} hint={c.pwHint} error={error} />
+          <PasswordField id="password" label={c.newPassword} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" c={c} hint={c.pwHint} meter error={error} />
           <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy && <span className="spinner" aria-hidden="true" />}{o.setPw}</button>
         </form>
       ) : info ? (
@@ -296,7 +284,7 @@ export function ResetForm({ token }) {
         <div className="notice notice-danger" role="alert"><Icon name="alert" size={18} />{c.err_invalid_or_expired_token}</div>
       ) : (
         <form className="stack" onSubmit={submit} noValidate>
-          <PasswordField id="password" label={c.newPassword} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" c={c} hint={c.pwHint} error={error} />
+          <PasswordField id="password" label={c.newPassword} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" c={c} hint={c.pwHint} meter error={error} />
           <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy && <span className="spinner" aria-hidden="true" />}{c.resetBtn}</button>
         </form>
       )}

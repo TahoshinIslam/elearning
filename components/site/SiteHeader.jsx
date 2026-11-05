@@ -8,6 +8,7 @@ import Icon from '@/components/Icon';
 import BrandMark from '@/components/ui/BrandMark';
 import Drawer from '@/components/ui/Drawer';
 import { SIDEBAR_OPEN_EVENT } from '@/components/ui/useShellNav';
+import { DOCK_SEARCH_EVENT, DOCK_MENU_EVENT } from '@/components/site/MobileDock';
 import { usePresence } from '@/components/ui/motion';
 import CartDrawer from '@/components/CartDrawer';
 import NotificationBell from '@/components/NotificationBell';
@@ -61,7 +62,7 @@ function AccountMenu({ auth, c, onLogout }) {
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button ref={btnRef} type="button" className="avatar-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} aria-label={`${c.account}: ${auth.name}`}>
-        {String(auth.name || '?').trim().charAt(0).toUpperCase()}
+        {auth.avatarUrl ? <img src={auth.avatarUrl} alt="" width={38} height={38} /> : String(auth.name || '?').trim().charAt(0).toUpperCase()}
       </button>
       {menu.mounted && (
         <div className="menu" role="menu" data-state={menu.state} onAnimationEnd={menu.onAnimationEnd} {...(menu.state === 'closing' ? { inert: '' } : {})}
@@ -96,6 +97,14 @@ export default function SiteHeader() {
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  // the mobile dock's Search / Menu buttons open the same overlays
+  useEffect(() => {
+    const openSearch = () => setSearchOpen(true);
+    const openMenu = () => { if (document.querySelector('.shell > .sidebar')) window.dispatchEvent(new Event(SIDEBAR_OPEN_EVENT)); else setNavOpen(true); };
+    window.addEventListener(DOCK_SEARCH_EVENT, openSearch);
+    window.addEventListener(DOCK_MENU_EVENT, openMenu);
+    return () => { window.removeEventListener(DOCK_SEARCH_EVENT, openSearch); window.removeEventListener(DOCK_MENU_EVENT, openMenu); };
+  }, []);
   const returnTo = pathname && !['/login', '/register'].includes(pathname) ? `?returnTo=${encodeURIComponent(pathname)}` : '';
   const doLogout = async () => {
     await logout();

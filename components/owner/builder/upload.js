@@ -46,4 +46,4 @@ export async function api(url, { method = 'GET', body } = {}) {
   return data;
 }
 
-export const fmtBytes = (b) => (!b ? '' : b > 1073741824 ? `${(b / 1073741824).toFixed(1)} GB` : b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+export const fmtBytes = (b) => (!b ? "" : b >= 1073741824 ? `${+(b / 1073741824).toFixed(1)} GB` : b >= 1048576 ? `${+(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);

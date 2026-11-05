@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import Icon from '@/components/Icon';
+import PasswordInput from '@/components/ui/PasswordInput';
 import Dialog from '@/components/ui/Dialog';
 import { useAdminData, send } from '@/components/owner/useAdminData';
 import { sectionText, ADMIN_GROUPS } from '@/components/owner/adminNav';
@@ -39,10 +40,14 @@ const PRESETS = {
   support: { dash: 'view', students: 'view', enroll: 'manage', messages: 'manage', reviews: 'manage', activity: 'view' }
 };
 
+// 14 random characters with at least one upper, lower, digit and symbol.
 const genPassword = () => {
-  const a = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  const r = crypto.getRandomValues(new Uint8Array(12));
-  return Array.from(r, (b) => a[b % a.length]).join('');
+  const sets = ['ABCDEFGHJKMNPQRSTUVWXYZ', 'abcdefghjkmnpqrstuvwxyz', '23456789', '@#$%&*!?'];
+  const all = sets.join('');
+  const r = crypto.getRandomValues(new Uint32Array(28));
+  const out = [...sets.map((set, i) => set[r[i] % set.length]), ...Array.from(r.slice(4, 14), (b) => all[b % all.length])];
+  for (let i = out.length - 1; i > 0; i--) { const j = r[14 + i - 1] % (i + 1); [out[i], out[j]] = [out[j], out[i]]; }
+  return out.join('');
 };
 
 // Section × level picker, grouped like the sidebar.
@@ -133,9 +138,8 @@ export default function AccessTab() {
             <div className="field"><label htmlFor="acc-name" className="req">{l.name}</label><input id="acc-name" className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} aria-invalid={!!errs.name} />{errs.name && <span className="field-error">{errs.name}</span>}</div>
             <div className="field"><label htmlFor="acc-email" className="req">{l.email}</label><input id="acc-email" className="input" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} aria-invalid={!!errs.email} />{errs.email && <span className="field-error">{errs.email}</span>}</div>
             <div className="field"><label htmlFor="acc-phone">{l.phone}</label><input id="acc-phone" className="input" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-            <div className="field"><label htmlFor="acc-password" className="req">{l.password}</label>
-              <div className="row" style={{ '--gap': '6px' }}><input id="acc-password" className="input" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} aria-invalid={!!errs.password} /><button type="button" className="btn btn-secondary btn-sm" data-confirm="off" onClick={() => setForm({ ...form, password: genPassword() })}>{l.gen}</button></div>
-              {errs.password && <span className="field-error">{errs.password}</span>}</div>
+            <PasswordInput id="acc-password" label={l.password} lang={lang} meter autoComplete="new-password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} error={errs.password}
+              extra={<button type="button" className="btn btn-secondary btn-sm" data-confirm="off" onClick={() => setForm({ ...form, password: genPassword() })}>{l.gen}</button>} />
             <div className="field"><label htmlFor="acc-role">{l.role}</label>
               <select id="acc-role" className="select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, grants: e.target.value === 'teacher' ? { ...PRESETS.teacher } : form.grants })}>
                 {roleChoices.map((r) => <option key={r} value={r}>{l.roles[r]}</option>)}

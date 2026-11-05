@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Icon from '@/components/Icon';
+import { useApp } from '@/context/AppContext';
 import { copy } from '@/lib/copy';
 import { useShellNav } from '@/components/ui/useShellNav';
 import SidebarSiteLinks from '@/components/ui/SidebarSiteLinks';
@@ -12,6 +13,7 @@ const NAV_KEY = 'leo_student_nav_collapsed';
 // Student workspace: full-width content beside a sidebar that collapses to
 // icons on desktop (remembered per browser) and becomes a drawer on mobile.
 export default function StudentShell({ lang, view, name, children }) {
+  const { auth } = useApp();
   const c = copy(lang);
   const { open, close, sidebarRef } = useShellNav();
   const [collapsed, setCollapsed] = useState(false);
@@ -29,7 +31,7 @@ export default function StudentShell({ lang, view, name, children }) {
     <div className="shell" data-collapsed={collapsed}>
       <aside ref={sidebarRef} className={`sidebar ${open ? 'open' : ''}`} aria-label={c.myLearning}>
         <div className="side-head">
-          <span className="avatar-btn" aria-hidden="true">{String(name || '?').charAt(0).toUpperCase()}</span>
+          <span className="avatar-btn" aria-hidden="true">{auth?.avatarUrl ? <img src={auth.avatarUrl} alt="" /> : String(name || '?').charAt(0).toUpperCase()}</span>
           <div className="side-head-text" style={{ minWidth: 0 }}><div className="strong clamp-2" style={{ fontSize: 15 }}>{name}</div></div>
         </div>
         <nav className="side-nav" aria-label={c.myLearning}>

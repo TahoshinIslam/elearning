@@ -16,6 +16,7 @@ import {
   logout as logoutThunk,
   showToast as showToastThunk,
   hydrateAuth,
+  setAuth,
   setCartOpen as setCartOpenAction,
   hydrateCart,
   addToCart as addToCartThunk,
@@ -649,6 +650,8 @@ export function useApp() {
   const setBrandColor = useCallback((v) => dispatch(setBrandColorAction(v)), [dispatch]);
   const setPayModel = useCallback((v) => dispatch(setPayModelAction(v)), [dispatch]);
   const showToast = useCallback((msg, kind) => dispatch(showToastThunk(msg, kind)), [dispatch]);
+  // merge fields into the signed-in user (e.g. a new avatarUrl) without a refetch
+  const patchAuth = useCallback((patch) => dispatch(setAuth(auth ? { ...auth, ...patch } : auth)), [dispatch, auth]);
   // client-only student payment flag (student PayModal → parent/ClassesTab read it)
   const setStudentPaidFlagCb = useCallback((v) => dispatch(setStudentPaidFlag(v)), [dispatch]);
 
@@ -696,7 +699,7 @@ export function useApp() {
 
   return {
     lang, setLang, toggleLang, t,
-    auth, authReady, login, register, logout,
+    auth, authReady, login, register, logout, patchAuth,
     centerName, setCenterName, centerDisplay, slug,
     brandColor, setBrandColor,
     payModel, setPayModel,

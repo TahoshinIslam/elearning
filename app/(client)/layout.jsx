@@ -1,5 +1,6 @@
 import PromoPopup from '@/components/home/PromoPopup';
 import SocialFloat from '@/components/site/SocialFloat';
+import MobileDock from '@/components/site/MobileDock';
 import { getLang } from '@/lib/lang';
 import { getSettings } from '@/lib/settingsRepo';
 
@@ -14,6 +15,7 @@ export default async function ClientLayout({ children }) {
       {children}
       <PromoPopup lang={lang} />
       <SocialFloat settings={settings} lang={lang} />
+      <MobileDock />
     </>
   );
 }
