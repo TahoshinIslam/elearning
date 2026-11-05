@@ -9,7 +9,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // deliberate: the whole point of this suite is to prove the actual DB
 // behavior, matching how the rest of this codebase is audited/verified.
 export default defineConfig({
-  resolve: { alias: { '@': here } },
+  resolve: { alias: { '@': here, 'server-only': path.join(here, 'tests/stubs/server-only.js') } },
   test: {
     environment: 'node',
     include: ['tests/**/*.test.mjs'],

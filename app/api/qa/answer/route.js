@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseBody, schemas } from '@/lib/validate';
 import { errResponse } from '@/lib/repo';
 import { postAnswer } from '@/lib/qaRepo';
 import { requireUser } from '@/lib/auth';
@@ -11,6 +12,6 @@ export async function POST(request) {
   try {
     const session = await requireUser();
     rateLimit(`qa:${session.id}`, { limit: 30, windowMs: 10 * 60_000 });
-    return NextResponse.json(await postAnswer(session, await request.json()), { status: 201 });
+    return NextResponse.json(await postAnswer(session, await parseBody(request, schemas.qaAnswer)), { status: 201 });
   } catch (e) { return errResponse(e); }
 }

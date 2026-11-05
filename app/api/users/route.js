@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseBody, schemas } from '@/lib/validate';
 import { errResponse, HttpError } from '@/lib/repo';
 import { listUsers, setUserRole, setUserStatus, setUserSections, createAccount } from '@/lib/authRepo';
 import { requireRole, revokeSessions } from '@/lib/auth';
@@ -18,7 +19,8 @@ export async function GET() {
 export async function POST(request) {
   try {
     const session = await requireRole('owner', 'superadmin');
-    const body = await request.json();
+    const raw = await request.clone().json().catch(() => ({}));
+    const body = await parseBody(request, raw?.action ? schemas.userAction : schemas.createAccount);
     if (body.action === 'revoke_sessions') {
       const id = Number(body.id);
       if (!id) throw new HttpError(400, { error: 'id_required' });
@@ -34,7 +36,7 @@ export async function POST(request) {
 export async function PATCH(request) {
   try {
     const session = await requireRole('owner', 'superadmin');
-    const body = await request.json();
+    const body = await parseBody(request, schemas.userPatch);
     if (body.grants !== undefined || body.sections !== undefined) return NextResponse.json(await setUserSections(session, body));
     if (body.status !== undefined) return NextResponse.json(await setUserStatus(session, body));
     return NextResponse.json(await setUserRole(session, body));

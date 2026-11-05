@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseBody, schemas } from '@/lib/validate';
 import { errResponse } from '@/lib/repo';
 import { createResetToken } from '@/lib/authRepo';
 import { rateLimit, clientIp, LIMITS } from '@/lib/rateLimit';
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic';
 // link returned for local testing.
 export async function POST(request) {
   try {
-    const { email } = await request.json();
+    const { email } = await parseBody(request, schemas.forgot);
     rateLimit(`forgot:${(await clientIp())}`, LIMITS.forgot);
     const token = await createResetToken(email);
     const devLinks = process.env.NODE_ENV !== 'production' && process.env.AUTH_DEV_RESET_LINKS === 'true';

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseBody, schemas } from '@/lib/validate';
 import { errResponse, HttpError } from '@/lib/repo';
 import { verifyToken } from '@/lib/signedUrl';
 import { hashPassword } from '@/lib/auth';
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic';
 // session_version, which also signs the account out everywhere.
 export async function POST(request) {
   try {
-    const { ticket, password } = await request.json();
+    const { ticket, password } = await parseBody(request, schemas.otpReset);
     const t = verifyToken(ticket);
     if (!t || t.op !== 'pwreset' || !t.uid) throw new HttpError(400, { error: 'reset_expired' });
     if (String(password || '').length < 8) throw new HttpError(400, { error: 'weak_password' });

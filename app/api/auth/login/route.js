@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseBody, schemas } from '@/lib/validate';
 import { errResponse, HttpError } from '@/lib/repo';
 import { findUserByEmail } from '@/lib/authRepo';
 import { verifyPassword, sessionFromUser, setSessionCookie } from '@/lib/auth';
@@ -10,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
-    const { email, password } = await request.json();
+    const { email, password } = await parseBody(request, schemas.login);
     rateLimit(`login:ip:${(await clientIp())}`, LIMITS.login);
     rateLimit(`login:email:${String(email || '').trim().toLowerCase()}`, LIMITS.login);
     const user = await findUserByEmail(email);

@@ -3,6 +3,26 @@ import path from 'node:path';
 import { verifyToken } from '@/lib/signedUrl';
 import { currentProvider, localPathForKey } from '@/lib/storage';
 import { logger } from '@/lib/logger';
+import { fileTypeFromFile } from 'file-type';
+
+// Text formats (captions, csv, txt) have no signature; everything else must
+// sniff as the declared type (Office files are zip containers; .mov sniffs
+// as video/quicktime).
+const TEXTUAL = /^(text\/|application\/json)/;
+const ALIASES = {
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['application/zip', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['application/zip', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['application/zip', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+  'application/zip': ['application/zip', 'application/x-zip-compressed'],
+  'video/mp4': ['video/mp4', 'video/x-m4v', 'video/quicktime'],
+  'video/quicktime': ['video/quicktime', 'video/mp4']
+};
+async function contentMatches(path, declared) {
+  if (!declared || declared === 'application/octet-stream' || TEXTUAL.test(declared)) return true;
+  const sniff = await fileTypeFromFile(path).catch(() => null);
+  if (!sniff) return false;
+  return (ALIASES[declared] || [declared]).includes(sniff.mime);
+}
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -44,6 +64,9 @@ export async function PUT(request, props) {
     }
     await new Promise((resolve, reject) => out.end((err) => (err ? reject(err) : resolve())));
     if (!written) throw Object.assign(new Error('empty_body'), { status: 400 });
+    // The declared Content-Type is only a claim: check the file's real
+    // signature (magic bytes) before it goes live.
+    if (!(await contentMatches(tmp, payload.ct))) throw Object.assign(new Error('content_mismatch'), { status: 415 });
     await fs.promises.rename(tmp, file);
   } catch (e) {
     out.destroy();

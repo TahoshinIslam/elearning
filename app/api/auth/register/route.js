@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseBody, schemas } from '@/lib/validate';
 import { errResponse } from '@/lib/repo';
 import { createUser } from '@/lib/authRepo';
 import { sessionFromUser, setSessionCookie } from '@/lib/auth';
@@ -11,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request) {
   try {
     rateLimit(`register:${(await clientIp())}`, LIMITS.register);
-    const user = await createUser(await request.json());
+    const user = await createUser(await parseBody(request, schemas.register));
     // credit the sign-up to the ad / source that brought this visitor
     await linkVisitorToUser((await visitorIdFromCookies()), user.id, { signup: true }).catch(() => {});
     const session = sessionFromUser(user);

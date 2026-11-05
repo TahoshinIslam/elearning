@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseBody, schemas } from '@/lib/validate';
 import { requireRole } from '@/lib/auth';
 import { errResponse, HttpError } from '@/lib/repo';
 import { securityOverview, manualBlock, liftBlock } from '@/lib/shield';
@@ -18,7 +19,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const session = await requireRole('owner', 'superadmin');
-    const b = await request.json();
+    const b = await parseBody(request, schemas.securityBlock);
     const ip = b.ip ? String(b.ip).trim() : null;
     if (ip && !IP_RE.test(ip)) throw new HttpError(400, { error: 'invalid_ip' });
     let userId = null;
@@ -40,7 +41,7 @@ export async function POST(request) {
 export async function DELETE(request) {
   try {
     const session = await requireRole('owner', 'superadmin');
-    const { id } = await request.json();
+    const { id } = await parseBody(request, schemas.securityLift);
     if (!(await liftBlock(Number(id), session.id))) throw new HttpError(404, { error: 'not_found' });
     return NextResponse.json(await securityOverview());
   } catch (e) { return errResponse(e); }

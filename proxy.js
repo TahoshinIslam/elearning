@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { inspectRequest, isCrossSiteWrite, hit, LIMITS as SHIELD, activeBlock, report, syncBlocks, ipFromHeaders } from '@/lib/shield';
+import { inspectRequest, isCrossSiteWrite, limit, activeBlock, report, syncBlocks, ipFromHeaders } from '@/lib/shield';
 
 // Private areas: never indexed, never cached by a shared cache.
 const PRIVATE_PAGES = ['/learn', '/student', '/owner', '/superadmin', '/checkout', '/account', '/login', '/register', '/forgot', '/reset', '/dev'];
@@ -84,9 +84,9 @@ export async function proxy(request) {
   }
   const bucket = isApi ? (AUTH_PATHS.test(pathname) ? 'auth' : ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) ? 'write' : 'api') : 'page';
   if (!(isApi && pathname === '/api/track')) {
-    const rl = hit(`${bucket}:${ip}`, SHIELD[bucket]);
+    const rl = await limit(bucket, ip);
     if (!rl.ok) {
-      if (rl.count === SHIELD[bucket].limit + 1 || rl.count % 25 === 0) report(ip, `rate_limit_${bucket}`, 3);
+      if (rl.strike) report(ip, `rate_limit_${bucket}`, 3);
       return deny(isApi, 429, 'rate_limited', { retryAfter: rl.retryAfter }, rl.retryAfter);
     }
   }

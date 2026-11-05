@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseBody, schemas } from '@/lib/validate';
 import { errResponse } from '@/lib/repo';
 import { changePassword, getUserById } from '@/lib/authRepo';
 import { requireUser, sessionFromUser, setSessionCookie } from '@/lib/auth';
@@ -14,7 +15,7 @@ export async function POST(request) {
   try {
     const session = await requireUser();
     rateLimit(`chpw:${session.id}`, LIMITS.login);
-    const { oldPassword, newPassword } = await request.json();
+    const { oldPassword, newPassword } = await parseBody(request, schemas.changePassword);
     const result = await changePassword(session.id, oldPassword, newPassword);
     const user = await getUserById(session.id);
     const [{ session_version: sv }] = await q('SELECT session_version FROM users WHERE id = ?', [session.id]);

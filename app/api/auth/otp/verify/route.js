@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseBody, schemas } from '@/lib/validate';
 import { errResponse } from '@/lib/repo';
 import { verifyOtp } from '@/lib/otpRepo';
 import { sessionFromUser, setSessionCookie } from '@/lib/auth';
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 //  reset → returns a 10-minute single-purpose ticket for /api/auth/otp/reset
 export async function POST(request) {
   try {
-    const { email, code, purpose } = await request.json();
+    const { email, code, purpose } = await parseBody(request, schemas.otpVerify);
     rateLimit(`otpv:ip:${(await clientIp())}`, LIMITS.login);
     const user = await verifyOtp(email, purpose === 'reset' ? 'reset' : 'login', code);
     if (purpose === 'reset') {
