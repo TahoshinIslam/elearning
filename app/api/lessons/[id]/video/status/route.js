@@ -7,6 +7,6 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
   try {
-    return NextResponse.json(await getVideoStatus(requireUser(), Number(params.id)));
+    return NextResponse.json(await getVideoStatus(await requireUser(), Number(params.id)));
   } catch (e) { return errResponse(e); }
 }

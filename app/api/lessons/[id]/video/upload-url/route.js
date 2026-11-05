@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 // before minting a signed upload URL.
 export async function POST(request, { params }) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     rateLimit(`upload:${session.id}`, LIMITS.upload);
     const body = await request.json();
     if (body.failed) return NextResponse.json(await reportUploadFailure(session, Number(params.id), body.reason));

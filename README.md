@@ -32,6 +32,59 @@ Demo accounts (development seed, `database/seed_users.mjs`, password
 `demo1234`): `student@`, `teacher@`, `owner@`, `superadmin@leolearning.app`.
 The login page shows quick-login buttons for them only outside production.
 
+## Project structure (App Router, no `src/`)
+
+```
+app/
+  (client)/   public site + learner area — URL unchanged (/, /courses, /course/[slug], /learn/…, /student …)
+  (auth)/     /login, /register, /forgot, /reset
+  (admin)/    /owner (staff console) and /superadmin — server-side role check in each layout
+  api/        route handlers (REST) — every admin endpoint is guarded per section + level
+  dev/        demo-only tools: /dev/bkash (payment simulator), /dev/mailbox (demo inbox)
+  layout.jsx  error.jsx  global-error.jsx  not-found.jsx  sitemap.js  robots.js
+views/
+  client/…    page UI for client routes (route files only hold routing config)
+  admin/…     page UI for admin routes
+components/   shared UI (ui/, site/, course/, learn/, checkout/, auth/, admin/, owner/, teacher/ …)
+lib/          data access (*Repo.js), auth, rbac, access, storage, tracking, mail, otp
+database/     migrations (run with node database/migrate.mjs <file>)
+tests/        integration tests against a real database (npm test)
+```
+
+## Access control (RBAC)
+
+Roles: `student`, `teacher`, `staff` (office / accounts / support), `owner`, `superadmin`.
+Owners and superadmins see every admin section. Teachers and staff get per-section grants with a
+level — **view** (read) or **manage** (create / edit / delete) — set in **Admin → Access & permissions**
+(owners create teacher/staff/student accounts; only a superadmin can create owners). Grants are
+enforced on the server by `requireStaffSection(section, level)` in every admin API, and sessions are
+re-checked against the `users` row on every request, so grant / role / disable changes apply
+immediately and “Sign out everywhere” (or a password change) revokes old sessions (`session_version`).
+
+## Analytics, activity and ad attribution
+
+- **Analytics** — revenue, orders, enrollments, active learners with period-over-period change,
+  daily charts, top courses, learning funnels, quiz results, CSV export (`/api/admin/analytics`).
+- **Traffic & ads** — first-party tracking (`leo_vid` cookie + `/api/track`, no third-party script).
+  UTM tags / gclid / fbclid / referrer are classified; sign-ups and orders keep the visitor’s
+  attribution, so the dashboard shows visitors, sign-ups, orders and revenue **per source and per
+  ad campaign**, the best campaign by revenue per visitor, and popup CTR and sales. A UTM link builder is included.
+- **Smart popups** — campaigns can target first-time / returning visitors, visitors from a given
+  `utm_campaign`, or visitors interested in a subject (course-view interest score), and trigger after
+  a delay, a scroll depth, exit intent or N page views, with a frequency cap.
+- **Recent activity** — one timeline of orders, refunds, enrollments, sign-ups, submissions, quiz
+  attempts, reviews, messages, admin and security events.
+
+## Demo-only features (replace before going live)
+
+| Feature | Demo behaviour | Go-live |
+|---|---|---|
+| Email one-time codes (login by code, password recovery) | Mail is stored and shown at `/dev/mailbox`; the code screen offers “Autofill” | Swap `lib/mailer.js` for a mail provider, or hand auth to Clerk |
+| Card / Nagad / Rocket / Upay | Full validated UI; **never** creates a paid order | Connect a gateway (hosted card fields) |
+| bKash | Real flow; `BKASH_SIMULATOR=true` uses the local simulator in development | Sandbox → live credentials |
+
+Demo mail and code autofill are on in development and only in production when `OTP_DEMO=true`.
+
 ## The purchase-to-learning flow
 
 1. **Discover** — `/` and `/courses` are server-rendered from published

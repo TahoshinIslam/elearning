@@ -90,14 +90,18 @@ function AccountMenu({ auth, c, onLogout }) {
 }
 
 export default function SiteHeader() {
-  const { lang, toggleLang, auth, authReady, logout, cartCount, setCartOpen } = useApp();
+  const { lang, toggleLang, auth, authReady, logout, cartCount, setCartOpen, showToast } = useApp();
   const c = copy(lang);
   const pathname = usePathname();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const returnTo = pathname && !['/login', '/register'].includes(pathname) ? `?returnTo=${encodeURIComponent(pathname)}` : '';
-  const doLogout = async () => { await logout(); router.push('/'); router.refresh(); };
+  const doLogout = async () => {
+    await logout();
+    showToast(lang === 'en' ? 'You are signed out' : 'আপনি লগআউট করেছেন', 'info');
+    router.push('/'); router.refresh();
+  };
   const homeFor = auth ? (auth.role === 'student' ? '/student' : ROLE_HOME[auth.role] || '/') : null;
 
   const links = [

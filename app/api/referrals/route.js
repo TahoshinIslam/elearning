@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // GET /api/referrals → the signed-in user's referral code + who they've referred
 export async function GET() {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     return NextResponse.json(await getMyReferral(session.id));
   } catch (e) { return errResponse(e); }
 }

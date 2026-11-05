@@ -12,7 +12,7 @@ import { IMAGE_SPECS } from '@/lib/imageSpecs';
 import { num, taka, dateLabel } from '@/lib/copy';
 
 const local = (v) => (v ? String(v).replace(' ', 'T').slice(0, 16) : '');
-const BLANK = { kind: 'slide', title: '', body: '', ctaLabel: '', targetType: 'course', targetValue: '', offerId: '', startsAt: '', endsAt: '', audience: 'all', pages: ['home'], frequencyHours: 24, imageAlt: '' };
+const BLANK = { kind: 'slide', title: '', body: '', ctaLabel: '', targetType: 'course', targetValue: '', offerId: '', startsAt: '', endsAt: '', audience: 'all', pages: ['home'], frequencyHours: 24, imageAlt: '', triggerType: 'delay', triggerValue: 3, utmCampaign: '', interestCategory: '' };
 
 const ERR = {
   bn: { title_required: 'শিরোনাম দিন।', cta_required: 'বোতামের লেখা দিন।', target_required: 'গন্তব্য বেছে নিন।', target_not_found: 'গন্তব্যটি আর নেই বা প্রকাশিত নয়।', end_before_start: 'শেষের সময় শুরুর পরে হতে হবে।', invalid_offer: 'অফারটি পাওয়া যায়নি।', campaign_page_needs_content: 'ক্যাম্পেইন পেজের জন্য বিবরণ বা অফার দরকার।', needs_image_or_body: 'পপআপ প্রকাশের আগে ছবি বা বিবরণ যোগ করুন।', unsupported_image_type: 'শুধু JPG, PNG বা WebP ছবি।', file_too_large: 'ছবিটি অনেক বড়।', storage_not_configured: 'ফাইল স্টোরেজ কনফিগার করা নেই।' },
@@ -46,8 +46,16 @@ export default function CampaignsTab() {
     class: en ? 'Class catalog' : 'শ্রেণির ক্যাটালগ', collection: en ? 'Collection' : 'সংগ্রহ', campaign: en ? 'Campaign page' : 'ক্যাম্পেইন পেজ'
   };
   const COLLECTION = { featured: en ? 'Featured' : 'নির্বাচিত কোর্স', new: en ? 'New arrivals' : 'নতুন কোর্স', upcoming: en ? 'Upcoming' : 'আসন্ন কোর্স' };
-  const PAGES = { home: en ? 'Homepage' : 'হোমপেজ', catalog: en ? 'Catalog' : 'ক্যাটালগ', course: en ? 'Course pages' : 'কোর্স পেজ' };
-  const AUD = { all: en ? 'Everyone' : 'সবাই', guests: en ? 'Signed-out visitors' : 'লগইন ছাড়া দর্শক', students: en ? 'Signed-in students' : 'লগইন করা শিক্ষার্থী' };
+  const PAGES = { all: en ? 'Every public page' : 'সব পাবলিক পেজ', home: en ? 'Homepage' : 'হোমপেজ', catalog: en ? 'Catalog' : 'ক্যাটালগ', course: en ? 'Course pages' : 'কোর্স পেজ' };
+  const AUD = {
+    all: en ? 'Everyone' : 'সবাই', guests: en ? 'Signed-out visitors' : 'লগইন ছাড়া দর্শক', students: en ? 'Signed-in students' : 'লগইন করা শিক্ষার্থী',
+    new_visitors: en ? 'First-time visitors' : 'প্রথমবার আসা দর্শক', returning: en ? 'Returning visitors' : 'ফিরে আসা দর্শক',
+    from_campaign: en ? 'Visitors from an ad campaign' : 'নির্দিষ্ট বিজ্ঞাপন থেকে আসা দর্শক', interested: en ? 'Visitors interested in a subject' : 'নির্দিষ্ট বিষয়ে আগ্রহী দর্শক'
+  };
+  const TRIG = {
+    delay: en ? 'After a delay (seconds)' : 'কিছুক্ষণ পর (সেকেন্ড)', scroll: en ? 'After scrolling (% of page)' : 'স্ক্রল করার পর (% পেজ)',
+    exit: en ? 'When leaving (exit intent)' : 'চলে যাওয়ার মুহূর্তে (এক্সিট ইনটেন্ট)', pageviews: en ? 'After N pages this visit' : 'এই ভিজিটে N টি পেজ দেখার পর'
+  };
 
   const targetOptions = () => {
     switch (form?.targetType) {
@@ -204,6 +212,22 @@ export default function CampaignsTab() {
                     <select id="cp-aud" className="select" value={form.audience} onChange={(e) => set('audience', e.target.value)}>
                       {Object.entries(AUD).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select></div>
+                  {form.audience === 'from_campaign' && (
+                    <div className="field"><label htmlFor="cp-utm" className="req">{en ? 'utm_campaign value' : 'utm_campaign মান'}</label><input id="cp-utm" className="input" required maxLength={150} placeholder="eid-sale-fb" value={form.utmCampaign || ''} onChange={(e) => set('utmCampaign', e.target.value)} /></div>
+                  )}
+                  {form.audience === 'interested' && (
+                    <div className="field"><label htmlFor="cp-int" className="req">{en ? 'Subject (category key)' : 'বিষয় (ক্যাটাগরি কী)'}</label><input id="cp-int" className="input" required maxLength={100} placeholder="physics" value={form.interestCategory || ''} onChange={(e) => set('interestCategory', e.target.value)} /></div>
+                  )}
+                  {form.kind === 'popup' && (
+                    <div className="field"><label htmlFor="cp-trig">{en ? 'Show when' : 'কখন দেখাবে'}</label>
+                      <select id="cp-trig" className="select" value={form.triggerType || 'delay'} onChange={(e) => set('triggerType', e.target.value)}>
+                        {Object.entries(TRIG).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select></div>
+                  )}
+                  {form.kind === 'popup' && form.triggerType !== 'exit' && (
+                    <div className="field"><label htmlFor="cp-tv">{form.triggerType === 'scroll' ? '%' : form.triggerType === 'pageviews' ? (en ? 'Pages' : 'পেজ') : (en ? 'Seconds' : 'সেকেন্ড')}</label>
+                      <input id="cp-tv" type="number" className="input" required min={form.triggerType === 'scroll' ? 10 : form.triggerType === 'pageviews' ? 1 : 0} max={form.triggerType === 'scroll' ? 100 : 600} value={form.triggerValue ?? 3} onChange={(e) => set('triggerValue', e.target.value)} /></div>
+                  )}
                   {form.kind === 'popup' && (
                     <div className="field"><label htmlFor="cp-freq">{en ? 'Show again after (hours)' : 'আবার দেখাবে (ঘণ্টা পর)'}</label><input id="cp-freq" type="number" min={1} max={720} className="input" value={form.frequencyHours} onChange={(e) => set('frequencyHours', e.target.value)} /></div>
                   )}

@@ -8,6 +8,64 @@ import Icon from '@/components/Icon';
 import { copy } from '@/lib/copy';
 import { safeReturnTo } from '@/lib/safeRedirect';
 import { ROLE_HOME } from '@/lib/rbac';
+import OtpCode from '@/components/auth/OtpCode';
+
+async function postJSON(url, body) {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || `http_${res.status}`), { data });
+  return data;
+}
+
+const OTP_T = {
+  bn: { tabPw: 'পাসওয়ার্ড', tabCode: 'ইমেইল কোড', codeIntro: 'পাসওয়ার্ড ছাড়াই লগইন: ইমেইলে একটি ৬ অঙ্কের কোড পাঠাব।', send: 'কোড পাঠান', wait: (s) => `${s} সেকেন্ড পর আবার চেষ্টা করুন`, invalidEmail: 'সঠিক ইমেইল দিন', newPw: 'নতুন পাসওয়ার্ড দিন', setPw: 'পাসওয়ার্ড সেট করুন', done: 'পাসওয়ার্ড বদলানো হয়েছে — এখন লগইন করুন।', welcome: 'স্বাগতম!', resetIntro: 'আপনার অ্যাকাউন্টের ইমেইল দিন — রিসেট কোড পাঠাব।' },
+  en: { tabPw: 'Password', tabCode: 'Email code', codeIntro: 'Sign in without a password: we’ll email you a 6-digit code.', send: 'Send code', wait: (s) => `Try again in ${s}s`, invalidEmail: 'Enter a valid email', newPw: 'Choose a new password', setPw: 'Set password', done: 'Password changed — sign in now.', welcome: 'Welcome!', resetIntro: 'Enter your account email — we’ll send a reset code.' }
+};
+
+// Email → code request step shared by login-by-code and password reset.
+function EmailStep({ purpose, lang, onSent, c }) {
+  const o = OTP_T[lang === 'en' ? 'en' : 'bn'];
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!e.currentTarget.checkValidity()) { setError(o.invalidEmail); e.currentTarget.reportValidity(); return; }
+    setBusy(true); setError('');
+    try { onSent(email.trim(), await postJSON('/api/auth/otp/request', { email: email.trim(), purpose })); }
+    catch (err) { setError(err.data?.retryAfter ? o.wait(err.data.retryAfter) : (c[`err_${err.message}`] || c.err_generic)); }
+    finally { setBusy(false); }
+  };
+  return (
+    <form className="stack" onSubmit={submit} noValidate>
+      <p className="muted" style={{ fontWeight: 600 }}>{purpose === 'login' ? o.codeIntro : o.resetIntro}</p>
+      <div className="field">
+        <label htmlFor={`otp-email-${purpose}`} className="req">{c.email}</label>
+        <input id={`otp-email-${purpose}`} className="input" type="email" inputMode="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={!!error} />
+      </div>
+      {error && <p className="field-error" role="alert">{error}</p>}
+      <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy && <span className="spinner" aria-hidden="true" />}<Icon name="mail" size={18} />{o.send}</button>
+    </form>
+  );
+}
+
+function CodeLogin({ lang, c, target }) {
+  const { showToast } = useApp();
+  const o = OTP_T[lang === 'en' ? 'en' : 'bn'];
+  const [email, setEmail] = useState(null);
+  const [info, setInfo] = useState(null);
+  if (!info) return <EmailStep purpose="login" lang={lang} c={c} onSent={(e, i) => { setEmail(e); setInfo(i); }} />;
+  return (
+    <OtpCode lang={lang} info={info}
+      onVerify={async (code) => {
+        const { user } = await postJSON('/api/auth/otp/verify', { email, code, purpose: 'login' });
+        showToast(`${o.welcome} ${user.name || ''}`.trim(), 'success');
+        setTimeout(() => window.location.assign(target || ROLE_HOME[user.role] || '/student'), 700);
+      }}
+      onResend={async () => setInfo(await postJSON('/api/auth/otp/request', { email, purpose: 'login' }))}
+      onRestart={() => { setInfo(null); setEmail(null); }} />
+  );
+}
 
 function Shell({ title, sub, children, footer, icon = 'user', tone = '' }) {
   return (
@@ -59,6 +117,7 @@ export function LoginForm({ returnTo, showDemo }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const target = safeReturnTo(returnTo, '');
+  const [mode, setMode] = useState('password');
 
   const submit = async (e, creds) => {
     e?.preventDefault();
@@ -67,10 +126,12 @@ export function LoginForm({ returnTo, showDemo }) {
     setError(''); setBusy(true);
     try {
       const user = await login(em, pw);
+      showToast(lang === 'en' ? `Welcome back, ${user.name || ''}`.trim() : `স্বাগতম, ${user.name || ''}`.trim(), 'success');
       router.replace(target || (user.role === 'student' ? '/student' : ROLE_HOME[user.role] || '/'));
       router.refresh();
     } catch (err) {
       setError(c[`err_${err.message}`] || c.err_invalid_credentials);
+      showToast(c[`err_${err.message}`] || c.err_invalid_credentials, 'error');
       setBusy(false);
     }
   };
@@ -78,6 +139,11 @@ export function LoginForm({ returnTo, showDemo }) {
   return (
     <Shell icon="lock" tone="is-login" title={c.loginTitle} sub={target ? c.returnNote : c.loginSub}
       footer={<>{c.noAccount} <Link className="link" href={`/register${target ? `?returnTo=${encodeURIComponent(target)}` : ''}`}>{c.signup}</Link></>}>
+      <div className="auth-tabs" role="tablist" aria-label={c.loginTitle}>
+        <button type="button" role="tab" aria-selected={mode === 'password'} onClick={() => setMode('password')}><Icon name="lock" size={16} />{OTP_T[lang === 'en' ? 'en' : 'bn'].tabPw}</button>
+        <button type="button" role="tab" aria-selected={mode === 'code'} onClick={() => setMode('code')}><Icon name="mail" size={16} />{OTP_T[lang === 'en' ? 'en' : 'bn'].tabCode}</button>
+      </div>
+      {mode === 'code' ? <CodeLogin lang={lang} c={c} target={target} /> : (<>
       <form className="stack" onSubmit={submit} noValidate>
         <div className="field">
           <label htmlFor="email">{c.email}</label>
@@ -96,12 +162,13 @@ export function LoginForm({ returnTo, showDemo }) {
           </div>
         </div>
       )}
+      </>)}
     </Shell>
   );
 }
 
 export function RegisterForm({ returnTo, referral }) {
-  const { lang, register } = useApp();
+  const { lang, register, showToast } = useApp();
   const c = copy(lang);
   const router = useRouter();
   const [f, setF] = useState({ name: '', email: '', phone: '', password: '', referralCode: referral || '' });
@@ -122,6 +189,7 @@ export function RegisterForm({ returnTo, referral }) {
     setBusy(true);
     try {
       await register({ name: f.name.trim(), email: f.email.trim(), phone: f.phone.trim() || undefined, password: f.password, role: 'student', referralCode: f.referralCode.trim() || undefined });
+      showToast(lang === 'en' ? 'Account created — welcome!' : 'অ্যাকাউন্ট তৈরি হয়েছে — স্বাগতম!', 'success');
       router.replace(target || '/student');
       router.refresh();
     } catch (err) {
@@ -161,41 +229,42 @@ export function RegisterForm({ returnTo, referral }) {
 }
 
 export function ForgotForm() {
-  const { lang } = useApp();
+  const { lang, showToast } = useApp();
   const c = copy(lang);
-  const [email, setEmail] = useState('');
+  const o = OTP_T[lang === 'en' ? 'en' : 'bn'];
+  const [email, setEmail] = useState(null);
+  const [info, setInfo] = useState(null);
+  const [ticket, setTicket] = useState(null);
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [devToken, setDevToken] = useState(null);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState('');
-  const submit = async (e) => {
+  const setNew = async (e) => {
     e.preventDefault();
-    if (!email.trim()) { setError(c.required); return; }
+    if (password.length < 8) { setError(c.err_weak_password); return; }
     setBusy(true); setError('');
     try {
-      const res = await fetch('/api/auth/forgot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim() }) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error);
-      setSent(true); setDevToken(data.devToken || null);
+      await postJSON('/api/auth/otp/reset', { ticket, password });
+      setDone(true);
+      showToast(o.done, 'success');
     } catch (err) { setError(c[`err_${err.message}`] || c.err_generic); } finally { setBusy(false); }
   };
   return (
-    <Shell icon="mail" tone="is-forgot" title={c.forgotTitle} sub={c.forgotSub} footer={<Link className="link" href="/login">{c.login}</Link>}>
-      {sent ? (
-        <div className="stack">
-          <div className="notice notice-success" role="status"><Icon name="mail" size={18} />{c.forgotSent}</div>
-          <div className="notice notice-warn"><Icon name="info" size={18} />{c.forgotNoEmail}</div>
-          {devToken && <Link className="btn btn-secondary" href={`/reset?token=${devToken}`}>Development: open reset link</Link>}
-        </div>
-      ) : (
-        <form className="stack" onSubmit={submit} noValidate>
-          <div className="field">
-            <label htmlFor="email">{c.email}</label>
-            <input id="email" className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required aria-invalid={!!error} />
-          </div>
-          {error && <p className="field-error" role="alert">{error}</p>}
-          <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy && <span className="spinner" aria-hidden="true" />}{c.sendLink}</button>
+    <Shell icon={ticket ? 'shield' : 'mail'} tone="is-forgot" title={ticket ? o.newPw : c.forgotTitle} sub={ticket || info ? null : c.forgotSub} footer={<Link className="link" href="/login">{c.login}</Link>}>
+      {done ? (
+        <div className="stack"><div className="notice notice-success" role="status"><Icon name="checkCircle" size={18} />{o.done}</div><Link href="/login" className="btn btn-primary btn-block">{c.loginBtn}</Link></div>
+      ) : ticket ? (
+        <form className="stack" onSubmit={setNew} noValidate>
+          <PasswordField id="password" label={c.newPassword} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" c={c} hint={c.pwHint} error={error} />
+          <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy && <span className="spinner" aria-hidden="true" />}{o.setPw}</button>
         </form>
+      ) : info ? (
+        <OtpCode lang={lang} info={info}
+          onVerify={async (code) => { const r = await postJSON('/api/auth/otp/verify', { email, code, purpose: 'reset' }); setTimeout(() => setTicket(r.ticket), 600); }}
+          onResend={async () => setInfo(await postJSON('/api/auth/otp/request', { email, purpose: 'reset' }))}
+          onRestart={() => { setInfo(null); setEmail(null); }} />
+      ) : (
+        <EmailStep purpose="reset" lang={lang} c={c} onSent={(e, i) => { setEmail(e); setInfo(i); }} />
       )}
     </Shell>
   );

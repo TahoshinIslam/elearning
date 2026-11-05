@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import BrandMark from '@/components/ui/BrandMark';
+import { socialLinks } from '@/lib/social';
+import Icon from '@/components/Icon';
 import { getSettings } from '@/lib/settingsRepo';
 import { getCopy } from '@/lib/lang';
 
@@ -36,6 +38,13 @@ export default async function SiteFooter() {
         <div className="stack" style={{ '--gap': '14px' }}>
           <Link href="/" className="brand" style={{ color: '#fff' }}><BrandMark /><span className="brand-word">Leo <span className="sticker">Learning</span></span></Link>
           <p style={{ maxWidth: 340, fontSize: 14.5, lineHeight: 1.6 }}>{c.footerTagline}</p>
+          {socialLinks(settings).length > 0 && (
+            <ul className="footer-social" aria-label="Social">
+              {socialLinks(settings).map((l) => (
+                <li key={l.key}><a href={l.href} target="_blank" rel="noopener noreferrer" aria-label={l.label} title={l.label}><Icon name={l.icon} size={20} /></a></li>
+              ))}
+            </ul>
+          )}
           <p className="footer-pay"><span className="badge" style={{ background: 'var(--bkash, #E2136E)', color: '#fff', borderColor: 'transparent' }}>bKash</span>{c.paymentsBy}</p>
         </div>
         <div>

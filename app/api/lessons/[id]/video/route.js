@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 // course-manager role. The returned URL is short-lived and signed.
 export async function GET(request, { params }) {
   try {
-    const session = currentSession();
+    const session = await currentSession();
     rateLimit(`playback:${session?.id || clientIp()}`, LIMITS.playback);
     return NextResponse.json(await getPlaybackInfo(session, Number(params.id)));
   } catch (e) { return errResponse(e); }
@@ -23,7 +23,7 @@ export async function GET(request, { params }) {
 // signed upload URL from /upload-url). The object's existence is verified.
 export async function POST(request, { params }) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     const body = await request.json();
     return NextResponse.json(await confirmUpload(session, Number(params.id), body));
   } catch (e) { return errResponse(e); }
@@ -31,7 +31,7 @@ export async function POST(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     return NextResponse.json(await removeVideo(session, Number(params.id)));
   } catch (e) { return errResponse(e); }
 }

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // GET /api/blog/{slug} → a single post (drafts visible to admins only)
 export async function GET(request, { params }) {
   try {
-    const s = currentSession();
+    const s = await currentSession();
     const includeDrafts = !!s && ['owner', 'superadmin'].includes(s.role);
     const post = await getPostBySlug(params.slug, { includeDrafts });
     if (!post) throw new HttpError(404, { error: 'not_found' });

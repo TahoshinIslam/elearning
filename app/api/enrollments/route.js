@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { currentSession, requireRole } from '@/lib/auth';
+import { currentSession, requireStaffSection } from '@/lib/auth';
 import { getEnrollments, enroll, unenroll, errResponse } from '@/lib/repo';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 // enrollments; staff may read everyone's (used by the owner Enrollments tab).
 export async function GET(request) {
   try {
-    const session = currentSession();
+    const session = await currentSession();
     if (!session) return NextResponse.json([]);
     const sp = new URLSearchParams(request.nextUrl.searchParams);
     if (session.role === 'student') sp.set('studentId', String(session.studentId ?? 0));
@@ -22,13 +22,13 @@ export async function GET(request) {
 // Manual/batch enrollment is a staff action (owner Enrollments tab). Real
 // marketplace enrollment now only ever happens as a side effect of a paid
 // order — see POST /api/orders + lib/orderRepo.js. This used to accept
-// requireUser() (any signed-in role) with a client-supplied studentId and
+// await requireUser() (any signed-in role) with a client-supplied studentId and
 // batchId and no payment check at all — a free-enrollment bypass.
 export async function POST(request) {
-  try { requireRole('owner', 'superadmin'); return NextResponse.json(await enroll(await request.json()), { status: 201 }); }
+  try { await requireStaffSection('enroll', 'manage'); return NextResponse.json(await enroll(await request.json()), { status: 201 }); }
   catch (e) { return errResponse(e); }
 }
 export async function DELETE(request) {
-  try { requireRole('owner', 'superadmin'); return NextResponse.json(await unenroll(await request.json())); }
+  try { await requireStaffSection('enroll', 'manage'); return NextResponse.json(await unenroll(await request.json())); }
   catch (e) { return errResponse(e); }
 }

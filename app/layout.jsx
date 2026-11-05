@@ -1,33 +1,20 @@
-import { Hind_Siliguri, Space_Grotesk, Anek_Bangla } from 'next/font/google';
+import { Archivo, Archivo_Black, Noto_Sans_Bengali } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import MaintenanceBanner from '@/components/MaintenanceBanner';
 import Toast from '@/components/Toast';
+import Tracker from '@/components/Tracker';
+import { Suspense } from 'react';
 import { currentSession } from '@/lib/auth';
 import { getCopy } from '@/lib/lang';
 import { siteUrl } from '@/lib/seo';
 
-// Type system: Space Grotesk carries Latin text and the loud uppercase
-// display style; Bangla glyphs fall through to Anek Bangla (headings) and
-// Hind Siliguri (body), so mixed Bangla/English lines render in one rhythm.
-const hind = Hind_Siliguri({
-  subsets: ['bengali', 'latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-hind',
-  display: 'swap'
-});
-const grotesk = Space_Grotesk({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-grotesk',
-  display: 'swap'
-});
-const anek = Anek_Bangla({
-  subsets: ['bengali', 'latin'],
-  weight: ['500', '600', '700', '800'],
-  variable: '--font-anek',
-  display: 'swap'
-});
+// Type system: Archivo Black sets the loud uppercase display lines, Archivo
+// carries Latin text, and Bangla glyphs fall through to Noto Sans Bengali
+// (a real 400–800 family, so headings and labels never use synthetic bold).
+const archivoBlack = Archivo_Black({ subsets: ['latin'], weight: '400', variable: '--font-archivo-black', display: 'swap' });
+const archivo = Archivo({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], variable: '--font-archivo', display: 'swap' });
+const notoBengali = Noto_Sans_Bengali({ subsets: ['bengali'], weight: ['400', '500', '600', '700', '800'], variable: '--font-bengali', display: 'swap' });
 
 export const metadata = {
   metadataBase: new URL(siteUrl()),
@@ -45,21 +32,22 @@ export const viewport = {
   initialScale: 1
 };
 
-export default function RootLayout({ children }) {
-  const session = currentSession();
+export default async function RootLayout({ children }) {
+  const session = await currentSession();
   const { lang, c } = getCopy();
   // Only the fields the UI needs reach the client.
   const initialAuth = session
     ? { id: session.id, role: session.role, name: session.name, email: session.email, studentId: session.studentId, teacherId: session.teacherId, tenantId: session.tenantId, sections: session.sections, permissions: session.permissions }
     : null;
   return (
-    <html lang={lang} className={`${hind.variable} ${grotesk.variable} ${anek.variable}`}>
+    <html lang={lang} className={`${archivoBlack.variable} ${archivo.variable} ${notoBengali.variable}`}>
       <body>
         <a href="#main" className="skip-link">{c.skip}</a>
         <AppProvider initialAuth={initialAuth} initialLang={lang}>
           <MaintenanceBanner />
           {children}
           <Toast />
+          <Suspense fallback={null}><Tracker /></Suspense>
         </AppProvider>
       </body>
     </html>

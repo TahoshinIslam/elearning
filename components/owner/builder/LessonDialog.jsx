@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import Icon from '@/components/Icon';
 import Dialog from '@/components/ui/Dialog';
 import { S, errText } from '@/components/owner/builder/strings';
 import { api as http, putFile, readDuration, fmtBytes } from '@/components/owner/builder/upload';
+import FileDropzone from '@/components/ui/FileDropzone';
 import { clock } from '@/lib/copy';
 import { useFlash } from '@/components/ui/motion';
 
@@ -70,46 +71,41 @@ export default function LessonDialog({ course, lesson, onClose }) {
 }
 
 function VideoSection({ lesson, s }) {
-  const { api, showToast } = useApp();
+  const { api, showToast, lang } = useApp();
   const [status, setStatus] = useState(null);
-  const [progress, setProgress] = useState(null); // null | 0-100 | 'verify'
   const [error, setError] = useState(null);
   const [cap, setCap] = useState({ lang: 'bn', label: 'বাংলা' });
-  const fileRef = useRef(null);
-  const capRef = useRef(null);
 
   const load = useCallback(() => http(`/api/lessons/${lesson.id}/video/status`).then(setStatus).catch((e) => setError(errText(s, e))), [lesson.id, s]);
   useEffect(() => { load(); }, [load]);
 
-  const upload = async (file) => {
-    if (!file) return;
-    setError(null); setProgress(0);
+  // FileDropzone drives the queue and progress; this does the 3-step upload.
+  const uploadVideo = async (file, { onProgress, signal }) => {
+    setError(null);
     try {
       const durationSeconds = await readDuration(file);
       const up = await http(`/api/lessons/${lesson.id}/video/upload-url`, { method: 'POST', body: { fileName: file.name, contentType: file.type || 'video/mp4', size: file.size } });
-      await putFile(up.uploadUrl, file, file.type || 'video/mp4', setProgress);
-      setProgress('verify');
+      await putFile(up.uploadUrl, file, file.type || 'video/mp4', onProgress, signal);
+      onProgress('verify');
       await http(`/api/lessons/${lesson.id}/video`, { method: 'POST', body: { key: up.key, durationSeconds } });
       showToast(s.v_ready, 'success');
       api.refetchCourses();
     } catch (err) {
-      setError(errText(s, err));
-      http(`/api/lessons/${lesson.id}/video/upload-url`, { method: 'POST', body: { failed: true, reason: err.message } }).catch(() => {});
-    } finally { setProgress(null); load(); }
+      if (!err.cancelled) http(`/api/lessons/${lesson.id}/video/upload-url`, { method: 'POST', body: { failed: true, reason: err.message } }).catch(() => {});
+      throw Object.assign(new Error(err.cancelled ? err.message : errText(s, err)), { cancelled: err.cancelled });
+    } finally { load(); }
   };
   const removeVideo = async () => {
     try { await http(`/api/lessons/${lesson.id}/video`, { method: 'DELETE' }); api.refetchCourses(); load(); }
     catch (err) { setError(errText(s, err)); }
   };
-  const uploadCaption = async (file) => {
-    if (!file) return;
-    setError(null);
+  const uploadCaption = async (file, { onProgress, signal }) => {
     try {
       const up = await http(`/api/lessons/${lesson.id}/captions`, { method: 'POST', body: cap });
-      await putFile(up.uploadUrl, file, 'text/vtt');
+      await putFile(up.uploadUrl, file, 'text/vtt', onProgress, signal);
       setStatus(await http(`/api/lessons/${lesson.id}/captions`, { method: 'PATCH', body: { key: up.key, lang: up.lang, label: up.label } }));
       showToast(s.saved, 'success');
-    } catch (err) { setError(errText(s, err)); }
+    } catch (err) { throw Object.assign(new Error(err.cancelled ? err.message : errText(s, err)), { cancelled: err.cancelled }); }
   };
 
   const badge = { ready: 'badge-success', pending: 'badge-warning', failed: 'badge-danger', missing: 'badge-danger' }[status?.status] || '';
@@ -121,19 +117,12 @@ function VideoSection({ lesson, s }) {
       </div>
       {status && !status.storageConfigured && <div className="notice notice-warn"><Icon name="alert" size={18} />{s.e_storage_not_configured}</div>}
       {status?.error && status.status !== 'ready' && <p className="field-error">{status.error}</p>}
-      <input ref={fileRef} type="file" accept="video/mp4,video/webm,video/quicktime" className="sr-only" id={`vf-${lesson.id}`} onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ''; }} />
-      {progress != null ? (
-        <div className="stack" style={{ '--gap': '6px' }} role="status" aria-live="polite">
-          <div className="progress"><span style={{ width: `${progress === 'verify' ? 100 : progress}%` }} /></div>
-          <span className="small muted">{progress === 'verify' ? s.verifying : `${s.uploading} ${progress}%`}</span>
-        </div>
-      ) : (
-        <div className="row" style={{ flexWrap: 'wrap', '--gap': '8px' }}>
-          <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()} disabled={status && !status.storageConfigured}><Icon name="upload" size={16} />{status?.status === 'ready' ? s.replace : s.uploadVideo}</button>
-          {status?.status === 'ready' && <button type="button" className="btn btn-ghost btn-sm" onClick={removeVideo}>{s.removeVideo}</button>}
-          <span className="help">{s.videoTypes}</span>
-        </div>
-      )}
+      <FileDropzone
+        accept="video/mp4,video/webm,video/quicktime" maxBytes={4 * 1024 * 1024 * 1024} lang={lang}
+        title={status?.status === 'ready' ? s.replace : s.uploadVideo} hint={s.videoTypes}
+        disabled={!!status && !status.storageConfigured} upload={uploadVideo}
+      />
+      {status?.status === 'ready' && <div><button type="button" className="btn btn-ghost btn-sm" onClick={removeVideo}><Icon name="trash" size={14} />{s.removeVideo}</button></div>}
       {status?.status === 'ready' && (
         <div className="stack" style={{ '--gap': '8px', borderTop: '1px solid var(--border)', paddingTop: 14 }}>
           <span className="label" style={{ margin: 0 }}>{s.captions}</span>
@@ -143,9 +132,8 @@ function VideoSection({ lesson, s }) {
             <input id="cap-lang" className="input" style={{ width: 90, minHeight: 36 }} value={cap.lang} onChange={(e) => setCap({ ...cap, lang: e.target.value })} placeholder="bn" />
             <label className="sr-only" htmlFor="cap-label">{s.captionLabel}</label>
             <input id="cap-label" className="input" style={{ width: 140, minHeight: 36 }} value={cap.label} onChange={(e) => setCap({ ...cap, label: e.target.value })} placeholder={s.captionLabel} />
-            <input ref={capRef} type="file" accept=".vtt,text/vtt" className="sr-only" onChange={(e) => { uploadCaption(e.target.files?.[0]); e.target.value = ''; }} />
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => capRef.current?.click()}><Icon name="upload" size={14} />{s.uploadCaption}</button>
           </div>
+          <FileDropzone accept=".vtt,text/vtt" maxBytes={2 * 1024 * 1024} lang={lang} compact title={s.uploadCaption} upload={uploadCaption} />
         </div>
       )}
       {error && <div className="notice notice-danger" role="alert"><Icon name="alert" size={18} />{error}</div>}
@@ -154,12 +142,11 @@ function VideoSection({ lesson, s }) {
 }
 
 function ResourcesSection({ lessonId, s }) {
-  const { api } = useApp();
+  const { api, lang } = useApp();
   const [items, setItems] = useState(null);
   const [link, setLink] = useState({ title: '', url: '' });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-  const fileRef = useRef(null);
   const load = useCallback(() => http(`/api/lessons/${lessonId}/resources?manage=1`).then(setItems).catch((e) => setError(errText(s, e))), [lessonId, s]);
   useEffect(() => { load(); }, [load]);
   const after = (list) => { setItems(list); api.refetchCourses(); };
@@ -169,14 +156,12 @@ function ResourcesSection({ lessonId, s }) {
     try { after(await http(`/api/lessons/${lessonId}/resources`, { method: 'POST', body: { kind: 'link', ...link } })); setLink({ title: '', url: '' }); }
     catch (err) { setError(errText(s, err)); } finally { setBusy(false); }
   };
-  const upload = async (file) => {
-    if (!file) return;
-    setError(null); setBusy(true);
+  const uploadResource = async (file, { onProgress, signal }) => {
     try {
       const up = await http(`/api/lessons/${lessonId}/resources`, { method: 'POST', body: { kind: 'file', title: file.name.replace(/\.[^.]+$/, ''), fileName: file.name, contentType: file.type, size: file.size } });
-      await putFile(up.uploadUrl, file, file.type);
+      await putFile(up.uploadUrl, file, file.type, onProgress, signal);
       after(await http(`/api/lessons/${lessonId}/resources`, { method: 'PATCH', body: { resourceId: up.resourceId } }));
-    } catch (err) { setError(errText(s, err)); load(); } finally { setBusy(false); }
+    } catch (err) { load(); throw Object.assign(new Error(err.cancelled ? err.message : errText(s, err)), { cancelled: err.cancelled }); }
   };
   const remove = async (id) => {
     try { after(await http(`/api/lessons/${lessonId}/resources`, { method: 'DELETE', body: { resourceId: id } })); } catch (err) { setError(errText(s, err)); }
@@ -203,8 +188,11 @@ function ResourcesSection({ lessonId, s }) {
         <input id={`ru-${lessonId}`} className="input" type="url" style={{ flex: '2 1 220px', minHeight: 38 }} placeholder={s.linkUrl} value={link.url} onChange={(e) => setLink({ ...link, url: e.target.value })} />
         <button type="submit" className="btn btn-secondary btn-sm" disabled={busy || !link.title.trim() || !link.url.trim()}><Icon name="link" size={14} />{s.addLink}</button>
       </form>
-      <input ref={fileRef} type="file" className="sr-only" accept=".pdf,.zip,.txt,.csv,.docx,.pptx,.xlsx,image/*" onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ''; }} />
-      <div><button type="button" className="btn btn-secondary btn-sm" onClick={() => fileRef.current?.click()} disabled={busy}>{busy ? <span className="spinner" aria-hidden="true" /> : <Icon name="upload" size={14} />}{s.uploadFile}</button></div>
+      <FileDropzone
+        multiple lang={lang} upload={uploadResource} maxBytes={200 * 1024 * 1024}
+        accept=".pdf,.zip,.txt,.csv,.docx,.pptx,.xlsx,image/jpeg,image/png,image/webp"
+        title={s.uploadFile} hint="PDF, ZIP, TXT, CSV, DOCX, PPTX, XLSX, JPG, PNG, WebP · ≤ 200 MB"
+      />
       {error && <div className="notice notice-danger" role="alert"><Icon name="alert" size={18} />{error}</div>}
     </section>
   );

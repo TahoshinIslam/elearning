@@ -140,6 +140,11 @@ export function ReadingPanel({ lesson, lang, learner, completed, onChange }) {
   );
 }
 
+const clockOf = (s) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`;
+
+// Student quiz player: single / multiple / true-false / short answers,
+// optional timer (server-enforced deadline), attempt limit, pass mark, and
+// answers + explanations revealed only when the quiz settings allow.
 export function QuizPanel({ lesson, lang, learner, onSubmitted }) {
   const c = copy(lang);
   const en = lang === 'en';
@@ -148,46 +153,125 @@ export function QuizPanel({ lesson, lang, learner, onSubmitted }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [submitError, setSubmitError] = useState(null);
+  const [deadline, setDeadline] = useState(null); // ms timestamp
+  const [now, setNow] = useState(Date.now());
+  const [started, setStarted] = useState(false);
   useEffect(() => { if (data?.attempt?.answers) setAnswers(data.attempt.answers); }, [data]);
-  if (loading) return <Loading />;
-  if (error) return <Failed c={c} onRetry={reload} />;
-  if (!data.questions.length) return <p className="muted">{en ? 'This quiz has no questions yet.' : 'এই কুইজে এখনো প্রশ্ন যোগ হয়নি।'}</p>;
-  const attempt = result || data.attempt;
-  const correct = result?.correct || (data.attempt ? Object.fromEntries(data.questions.map((qq) => [qq.id, qq.options.find((o) => o.isCorrect)?.id])) : null);
-  const submit = async (e) => {
-    e.preventDefault();
-    const missing = data.questions.filter((qq) => answers[qq.id] == null).length;
-    if (missing) { setSubmitError(en ? `Answer all questions (${missing} left).` : `সব প্রশ্নের উত্তর দিন (${num(lang, missing)}টি বাকি)।`); return; }
+  useEffect(() => {
+    if (!deadline) return undefined;
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [deadline]);
+  const secondsLeft = deadline ? Math.ceil((deadline - now) / 1000) : null;
+
+  const doSubmit = async (auto = false) => {
     setBusy(true); setSubmitError(null);
     try {
       const res = await fetch('/api/quizzes/attempt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId: lesson.id, answers }) });
       const out = await res.json();
       if (!res.ok) throw new Error(out.error);
-      setResult(out); onSubmitted();
-    } catch { setSubmitError(c.err_generic); } finally { setBusy(false); }
+      setResult(out); setDeadline(null); setStarted(false); onSubmitted(); reload();
+      if (auto) setSubmitError(en ? 'Time’s up — your answers were submitted.' : 'সময় শেষ — আপনার উত্তর জমা হয়েছে।');
+    } catch (err) {
+      setSubmitError(err.message === 'no_attempts_left' ? (en ? 'No attempts left.' : 'আর কোনো চেষ্টা বাকি নেই।') : c.err_generic);
+    } finally { setBusy(false); }
   };
+  useEffect(() => { if (secondsLeft != null && secondsLeft <= 0 && !busy) doSubmit(true); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [secondsLeft]);
+
+  if (loading) return <Loading />;
+  if (error) return <Failed c={c} onRetry={reload} />;
+  if (!data.questions.length) return <p className="muted">{en ? 'This quiz has no questions yet.' : 'এই কুইজে এখনো প্রশ্ন যোগ হয়নি।'}</p>;
+
+  const st = data.settings || {};
+  const attempt = result || data.attempt;
+  const revealed = result ? !!result.correct : data.revealed;
+  const correct = result?.correct || (data.revealed ? Object.fromEntries(data.questions.map((qq) => [qq.id, qq.type === 'short' ? (qq.acceptedAnswers || [])[0] : qq.type === 'multiple' ? qq.options.filter((o) => o.isCorrect).map((o) => o.id) : qq.options.find((o) => o.isCorrect)?.id])) : null);
+  const explanations = result?.explanations || (data.revealed ? Object.fromEntries(data.questions.filter((qq) => qq.explanation).map((qq) => [qq.id, qq.explanation])) : {});
+  const perQ = result?.results || data.attempt?.results || null;
+  const attemptsLeft = result ? result.attemptsLeft : data.attemptsLeft;
+  const canAttempt = learner && (attemptsLeft == null || attemptsLeft > 0);
+  const timed = !!st.timeLimitSec;
+  const mustStart = timed && canAttempt && !started;
+
+  const start = async () => {
+    setSubmitError(null);
+    const res = await fetch('/api/quizzes/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId: lesson.id }) });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) { setSubmitError(out.error === 'no_attempts_left' ? (en ? 'No attempts left.' : 'আর কোনো চেষ্টা বাকি নেই।') : c.err_generic); return; }
+    if (!result) setAnswers({});
+    setResult(null);
+    setStarted(true);
+    if (out.secondsLeft != null) { setDeadline(Date.now() + out.secondsLeft * 1000); setNow(Date.now()); }
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    const missing = data.questions.filter((qq) => answers[qq.id] == null || answers[qq.id] === '' || (Array.isArray(answers[qq.id]) && !answers[qq.id].length)).length;
+    if (missing) { setSubmitError(en ? `Answer all questions (${missing} left).` : `সব প্রশ্নের উত্তর দিন (${num(lang, missing)}টি বাকি)।`); return; }
+    doSubmit(false);
+  };
+
+  const percent = attempt?.maxScore ? Math.round((attempt.score / attempt.maxScore) * 100) : 0;
+  const passMark = st.passPercent || 0;
+  const passed = result ? result.passed : attempt?.passed;
+  const locked = mustStart || !learner || (!canAttempt && !started);
+
   return (
-    <form className="stack" style={{ '--gap': '18px' }} onSubmit={submit}>
-      {attempt && <div className="notice notice-success" role="status" style={{ background: 'rgba(21,128,61,.15)', color: '#BBF7D0', borderColor: 'rgba(34,197,94,.35)' }}><Icon name="award" size={18} />{en ? 'Score' : 'স্কোর'}: {num(lang, attempt.score)} / {num(lang, attempt.maxScore)}</div>}
-      {data.questions.map((qq, i) => (
-        <fieldset key={qq.id} className="surface" style={{ padding: 16, margin: 0 }}>
-          <legend className="strong" style={{ color: 'var(--stage-ink)', padding: '0 4px' }}>{num(lang, i + 1)}. {qq.question}</legend>
-          <div className="stack" style={{ '--gap': '6px', marginTop: 6 }}>
-            {qq.options.map((o) => {
-              const isRight = correct && correct[qq.id] === o.id;
-              const picked = Number(answers[qq.id]) === o.id;
-              return (
-                <label key={o.id} className="check" style={{ padding: '8px 10px', borderRadius: 0, background: correct && isRight ? 'rgba(34,197,94,.14)' : correct && picked ? 'rgba(239,68,68,.14)' : 'transparent', color: 'var(--stage-ink)' }}>
-                  <input type="radio" name={`q-${qq.id}`} checked={picked} disabled={!learner} onChange={() => setAnswers((a) => ({ ...a, [qq.id]: o.id }))} />
-                  <span>{o.text}{correct && isRight && <span className="sr-only"> ({en ? 'correct answer' : 'সঠিক উত্তর'})</span>}</span>
-                </label>
-              );
-            })}
-          </div>
-        </fieldset>
-      ))}
+    <form className="stack quiz" style={{ '--gap': '18px' }} onSubmit={submit}>
+      <div className="quiz-bar">
+        {timed && <span className="badge"><Icon name="clock" size={13} />{clockOf(st.timeLimitSec)}</span>}
+        {passMark > 0 && <span className="badge">{en ? 'Pass' : 'পাস'} {num(lang, passMark)}%</span>}
+        {attemptsLeft != null && <span className="badge">{en ? `${attemptsLeft} attempt(s) left` : `আর ${num(lang, attemptsLeft)} বার চেষ্টা`}</span>}
+        <span className="badge">{num(lang, data.maxScore)} {en ? 'points' : 'নম্বর'}</span>
+        {secondsLeft != null && <span className={`quiz-timer ${secondsLeft <= 30 ? 'is-low' : ''}`} role="timer" aria-live="off"><Icon name="clock" size={15} />{clockOf(secondsLeft)}</span>}
+      </div>
+      {st.instructions && !attempt && <p className="notice"><Icon name="info" size={18} />{st.instructions}</p>}
+      {attempt && (
+        <div className={`quiz-score ${passed === false ? 'is-fail' : 'is-pass'}`} role="status">
+          <Icon name="award" size={20} />
+          <strong>{num(lang, attempt.score)} / {num(lang, attempt.maxScore)} · {num(lang, percent)}%</strong>
+          {passed != null && <span className="badge">{passed ? (en ? 'Passed' : 'পাস') : (en ? 'Not passed yet' : 'এখনো পাস হয়নি')}</span>}
+          {!revealed && <span className="small">{en ? 'Correct answers are hidden for this quiz.' : 'এই কুইজে সঠিক উত্তর দেখানো হয় না।'}</span>}
+        </div>
+      )}
+      {mustStart ? (
+        <div className="surface quiz-start"><p>{en ? `Timed quiz: you’ll have ${clockOf(st.timeLimitSec)} once you start. The clock keeps running if you leave.` : `সময়সীমাযুক্ত কুইজ: শুরু করলে ${clockOf(st.timeLimitSec)} সময় পাবেন। পেজ ছেড়ে গেলেও সময় চলতে থাকবে।`}</p>
+          <button type="button" className="btn btn-primary" onClick={start}><Icon name="play" size={16} />{attempt ? (en ? 'Start a new attempt' : 'নতুন চেষ্টা শুরু করুন') : (en ? 'Start quiz' : 'কুইজ শুরু করুন')}</button></div>
+      ) : data.questions.map((qq, i) => {
+        const given = answers[qq.id];
+        const right = correct ? correct[qq.id] : undefined;
+        const ok = perQ ? perQ[qq.id] : null;
+        return (
+          <fieldset key={qq.id} className={`surface quiz-q ${ok === true ? 'is-right' : ok === false ? 'is-wrong' : ''}`} disabled={locked}>
+            <legend className="strong">{num(lang, i + 1)}. {qq.question} <span className="xsmall muted">({num(lang, qq.points)} {en ? 'pt' : 'নম্বর'}{qq.type === 'multiple' ? (en ? ' · choose all that apply' : ' · একাধিক উত্তর হতে পারে') : ''})</span></legend>
+            {qq.type === 'short' ? (
+              <div className="stack" style={{ '--gap': '6px' }}>
+                <label className="sr-only" htmlFor={`qa-${qq.id}`}>{en ? 'Your answer' : 'আপনার উত্তর'}</label>
+                <input id={`qa-${qq.id}`} className="input" value={given ?? ''} maxLength={500} onChange={(e) => setAnswers((a) => ({ ...a, [qq.id]: e.target.value }))} />
+                {revealed && right != null && <span className="small">{en ? 'Accepted answer' : 'গ্রহণযোগ্য উত্তর'}: <strong>{right}</strong></span>}
+              </div>
+            ) : (
+              <div className="stack" style={{ '--gap': '6px', marginTop: 6 }}>
+                {qq.options.map((o) => {
+                  const multi = qq.type === 'multiple';
+                  const picked = multi ? (Array.isArray(given) ? given.map(Number).includes(o.id) : false) : Number(given) === o.id;
+                  const isRight = revealed && (multi ? (right || []).includes(o.id) : right === o.id);
+                  return (
+                    <label key={o.id} className={`check quiz-opt ${isRight ? 'is-right' : revealed && picked ? 'is-wrong' : ''}`}>
+                      <input type={multi ? 'checkbox' : 'radio'} name={`q-${qq.id}`} checked={picked}
+                        onChange={(e) => setAnswers((a) => ({ ...a, [qq.id]: multi ? (e.target.checked ? [...(a[qq.id] || []), o.id] : (a[qq.id] || []).filter((x) => Number(x) !== o.id)) : o.id }))} />
+                      <span>{o.text}{isRight && <span className="sr-only"> ({en ? 'correct answer' : 'সঠিক উত্তর'})</span>}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            {explanations[qq.id] && <p className="quiz-explain"><Icon name="info" size={14} />{explanations[qq.id]}</p>}
+          </fieldset>
+        );
+      })}
       {submitError && <p className="field-error" role="alert">{submitError}</p>}
-      {learner && <div><button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="spinner" aria-hidden="true" />}{attempt ? (en ? 'Resubmit quiz' : 'আবার জমা দিন') : (en ? 'Submit quiz' : 'কুইজ জমা দিন')}</button></div>}
+      {learner && !mustStart && canAttempt && <div><button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="spinner" aria-hidden="true" />}{attempt && !started ? (en ? 'Submit again' : 'আবার জমা দিন') : (en ? 'Submit quiz' : 'কুইজ জমা দিন')}</button></div>}
     </form>
   );
 }

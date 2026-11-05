@@ -11,15 +11,15 @@ export const dynamic = 'force-dynamic';
 export async function GET(request, { params }) {
   try {
     const id = Number(params.id);
-    if (request.nextUrl.searchParams.get('manage') === '1') return NextResponse.json(await listResourcesForStaff(requireUser(), id));
-    return NextResponse.json(await listResources(currentSession(), id));
+    if (request.nextUrl.searchParams.get('manage') === '1') return NextResponse.json(await listResourcesForStaff(await requireUser(), id));
+    return NextResponse.json(await listResources(await currentSession(), id));
   } catch (e) { return errResponse(e); }
 }
 
 // POST { kind:'link', title, url } | { kind:'file', title, fileName, contentType, size } (course managers)
 export async function POST(request, { params }) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     rateLimit(`upload:${session.id}`, LIMITS.upload);
     const body = await request.json();
     const id = Number(params.id);
@@ -32,13 +32,13 @@ export async function POST(request, { params }) {
 export async function PATCH(request, { params }) {
   try {
     const body = await request.json();
-    return NextResponse.json(await confirmResourceUpload(requireUser(), Number(params.id), body.resourceId));
+    return NextResponse.json(await confirmResourceUpload(await requireUser(), Number(params.id), body.resourceId));
   } catch (e) { return errResponse(e); }
 }
 
 export async function DELETE(request, { params }) {
   try {
     const body = await request.json();
-    return NextResponse.json(await deleteResource(requireUser(), Number(params.id), body.resourceId));
+    return NextResponse.json(await deleteResource(await requireUser(), Number(params.id), body.resourceId));
   } catch (e) { return errResponse(e); }
 }

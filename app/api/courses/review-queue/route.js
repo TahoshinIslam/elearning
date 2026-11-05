@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // Superadmin's approval queue — every course an owner has submitted for review.
 export async function GET() {
   try {
-    requireRole('superadmin');
+    await requireRole('superadmin');
     return NextResponse.json(await getPendingReviews());
   } catch (e) { return errResponse(e); }
 }

@@ -7,6 +7,6 @@ export const dynamic = 'force-dynamic';
 
 // Course player outline for the signed-in learner (or the course's manager).
 export async function GET(request, { params }) {
-  try { return NextResponse.json(await getLearnerCourse(requireUser(), params.slug)); }
+  try { return NextResponse.json(await getLearnerCourse(await requireUser(), params.slug)); }
   catch (e) { return errResponse(e); }
 }

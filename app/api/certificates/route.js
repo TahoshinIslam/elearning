@@ -7,11 +7,11 @@ export const dynamic = 'force-dynamic';
 // Own certificates for a student; staff see all. Public verification is
 // /api/certificates/verify/[certNo].
 export async function GET(request) {
-  try { const { sp } = scopeToCaller(request.nextUrl.searchParams); return NextResponse.json(await getCertificates(sp)); } catch (e) { return errResponse(e); }
+  try { const { sp } = await scopeToCaller(request.nextUrl.searchParams); return NextResponse.json(await getCertificates(sp)); } catch (e) { return errResponse(e); }
 }
 export async function POST(request) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     const body = await request.json();
     // A student may only issue their OWN certificate; staff may issue for anyone.
     if (session.role === 'student') {

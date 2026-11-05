@@ -10,13 +10,13 @@ export const dynamic = 'force-dynamic';
 
 // Own submissions for a student; staff need the 'submissions' section.
 export async function GET(request) {
-  try { const { sp } = scopeToCaller(request.nextUrl.searchParams, 'submissions'); return NextResponse.json(await getSubmissions(sp)); } catch (e) { return errResponse(e); }
+  try { const { sp } = await scopeToCaller(request.nextUrl.searchParams, 'submissions'); return NextResponse.json(await getSubmissions(sp)); } catch (e) { return errResponse(e); }
 }
 // A student submits only as themselves, only for an assignment lesson of a
 // course they're actively enrolled in.
 export async function POST(request) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     if (!session.studentId) throw new HttpError(403, { error: 'not_a_student' });
     const body = await request.json();
     const { ctx } = await assertLessonAccess(session, body.lessonId);
@@ -28,7 +28,7 @@ export async function POST(request) {
 }
 export async function PATCH(request) {
   try {
-    requireStaffSection('submissions');
+    await requireStaffSection('submissions', 'manage');
     const body = await request.json();
     const list = await gradeSubmission(body);
     // notify the graded student (best-effort; ignore if they have no user account)

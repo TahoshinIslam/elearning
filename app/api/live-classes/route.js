@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 // the access-checked /api/live-classes/[id]/join. Guests get nothing.
 export async function GET(request) {
   try {
-    const session = currentSession();
+    const session = await currentSession();
     if (!session) return NextResponse.json([]);
     if (isStaff(session)) return NextResponse.json(await getLiveClasses(request.nextUrl.searchParams));
     if (!session.studentId) return NextResponse.json([]);
@@ -21,8 +21,8 @@ export async function GET(request) {
   } catch (e) { return errResponse(e); }
 }
 export async function POST(request) {
-  try { requireStaffSection('classes'); return NextResponse.json(await scheduleClass(await request.json()), { status: 201 }); } catch (e) { return errResponse(e); }
+  try { await requireStaffSection('classes', 'manage'); return NextResponse.json(await scheduleClass(await request.json()), { status: 201 }); } catch (e) { return errResponse(e); }
 }
 export async function PATCH(request) {
-  try { requireStaffSection('classes'); return NextResponse.json(await updateLiveClass(await request.json())); } catch (e) { return errResponse(e); }
+  try { await requireStaffSection('classes', 'manage'); return NextResponse.json(await updateLiveClass(await request.json())); } catch (e) { return errResponse(e); }
 }

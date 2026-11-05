@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 // order or staff only; repeatable and idempotent.
 export async function POST(request, { params }) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     rateLimit(`reconcile:${session.id}`, LIMITS.reconcile);
     return NextResponse.json(await reconcileOrder(session, Number(params.id)));
   } catch (e) { return errResponse(e); }

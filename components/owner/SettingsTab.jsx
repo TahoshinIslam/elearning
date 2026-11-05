@@ -80,6 +80,41 @@ export default function SettingsTab() {
             </div>
           </section>
 
+          <section className="surface surface-pad stack" aria-labelledby="set-social">
+            <h2 id="set-social" className="h4">{en ? 'Social & chat' : 'সোশ্যাল ও চ্যাট'}</h2>
+            <p className="small muted">{en ? 'Shown as icons in the footer. Leave a field empty to hide it. Links must start with https://' : 'ফুটারে আইকন হিসেবে দেখাবে। ফাঁকা রাখলে দেখাবে না। লিংক https:// দিয়ে শুরু হতে হবে।'}</p>
+            <div className="form-grid">
+              {[
+                ['socialFacebook', 'facebook', 'Facebook page', 'https://facebook.com/yourpage'],
+                ['socialMessenger', 'messenger', 'Messenger', 'https://m.me/yourpage'],
+                ['socialYoutube', 'youtube', 'YouTube', 'https://youtube.com/@channel'],
+                ['socialInstagram', 'instagram', 'Instagram', 'https://instagram.com/handle'],
+                ['socialLinkedin', 'linkedin', 'LinkedIn', 'https://linkedin.com/company/…'],
+                ['socialTiktok', 'tiktok', 'TikTok', 'https://tiktok.com/@handle'],
+                ['socialTelegram', 'telegram', 'Telegram', 'https://t.me/channel']
+              ].map(([key, icon, label, ph]) => (
+                <div key={key} className="field">
+                  <label htmlFor={`set-${key}`} className="row" style={{ '--gap': '6px' }}><Icon name={icon} size={16} />{label}</label>
+                  <input id={`set-${key}`} className="input" type="url" inputMode="url" pattern="https://.+" placeholder={ph} value={s[key] || ''} onChange={set(key)} maxLength={300}
+                    title={en ? 'A full link starting with https://' : 'https:// দিয়ে শুরু পূর্ণ লিংক'} />
+                </div>
+              ))}
+              <div className="field">
+                <label htmlFor="set-wa" className="row" style={{ '--gap': '6px' }}><Icon name="whatsapp" size={16} />{en ? 'WhatsApp number' : 'হোয়াটসঅ্যাপ নম্বর'}</label>
+                <input id="set-wa" className="input" type="tel" inputMode="tel" pattern="\+?[0-9][0-9 \-]{6,18}" placeholder="+8801712345678" value={s.socialWhatsapp || ''} onChange={set('socialWhatsapp')}
+                  title={en ? 'Digits with an optional + country code' : 'অঙ্ক, চাইলে শুরুতে + দেশের কোড'} />
+              </div>
+              <div className="field">
+                <label htmlFor="set-chat">{en ? 'Floating chat button' : 'ভাসমান চ্যাট বাটন'}</label>
+                <select id="set-chat" className="select" value={s.chatButton || 'off'} onChange={set('chatButton')}>
+                  <option value="off">{en ? 'Hidden' : 'দেখাবে না'}</option>
+                  <option value="whatsapp" disabled={!s.socialWhatsapp}>WhatsApp</option>
+                  <option value="messenger" disabled={!s.socialMessenger}>Messenger</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
           <section className="surface surface-pad stack" aria-labelledby="set-badges">
             <h2 id="set-badges" className="h4">{en ? 'Course badges' : 'কোর্স ব্যাজ'}</h2>
             <p className="small muted">{en ? 'Badges are computed from real data. “Top rated” counts only published reviews from verified purchasers; “New” counts from a course’s first publication.' : 'ব্যাজ প্রকৃত ডেটা থেকে হিসাব হয়। “সেরা রেটিং” শুধু যাচাইকৃত ক্রেতাদের প্রকাশিত রিভিউ গণনা করে; “নতুন” কোর্সের প্রথম প্রকাশের দিন থেকে গণনা হয়।'}</p>

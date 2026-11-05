@@ -3,9 +3,23 @@ import { NextResponse } from 'next/server';
 // Private areas: never indexed, never cached by a shared cache.
 const PRIVATE_PAGES = ['/learn', '/student', '/owner', '/superadmin', '/checkout', '/account', '/login', '/register', '/forgot', '/reset', '/dev'];
 
+// Anonymous first-party visitor id (26 chars, Crockford-style alphabet) for
+// lib/trackingRepo.js. Not personal data on its own; HttpOnly, 1 year.
+const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+function newVisitorId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(26));
+  return Array.from(bytes, (b) => ALPHABET[b % 32]).join('');
+}
+
 export function middleware(request) {
   const { pathname } = request.nextUrl;
   const res = NextResponse.next();
+
+  if (!pathname.startsWith('/api/') && !request.cookies.get('leo_vid')) {
+    res.cookies.set('leo_vid', newVisitorId(), {
+      httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 365 * 24 * 3600
+    });
+  }
 
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // Explicit "mark as complete" for reading lessons (no watch tracking).
 export async function POST(request, { params }) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     const body = await request.json();
     return NextResponse.json(await setManualCompletion(session, Number(params.id), body.completed !== false));
   } catch (e) { return errResponse(e); }

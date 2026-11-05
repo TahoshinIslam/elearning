@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Icon from '@/components/Icon';
 import CourseCover from '@/components/ui/CourseCover';
+import PaymentMethods, { validatePayment, isLiveMethod } from '@/components/checkout/PaymentMethods';
 import { copy, taka, num } from '@/lib/copy';
 
 const newKey = () => `ck-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -13,7 +14,7 @@ const newKey = () => `ck-${Date.now().toString(36)}-${Math.random().toString(36)
 export default function CheckoutForm({ lang, items, payable, initialQuote, paymentsAvailable }) {
   const c = copy(lang);
   const router = useRouter();
-  const { removeFromCart } = useApp();
+  const { removeFromCart, showToast } = useApp();
   const subtotal = useMemo(() => payable.reduce((s, i) => s + i.price, 0), [payable]);
   const [code, setCode] = useState('');
   const [quote, setQuote] = useState(initialQuote || null); // server quote (offers + optional coupon)
@@ -23,6 +24,8 @@ export default function CheckoutForm({ lang, items, payable, initialQuote, payme
   const [agreeError, setAgreeError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [pay, setPay] = useState({ tab: 'mobile', wallet: 'bkash', walletNumber: '', card: { number: '', name: '', expiry: '', cvc: '' } });
+  const [payErrors, setPayErrors] = useState({});
   // One idempotency key per checkout attempt: a double click or retry
   // returns the same order instead of opening a second bKash payment.
   const keyRef = useRef(newKey());
@@ -47,7 +50,24 @@ export default function CheckoutForm({ lang, items, payable, initialQuote, payme
   };
 
   const submit = async () => {
+    if (!free) {
+      const v = validatePayment(pay);
+      if (!v.ok) { setPayErrors(v.errors); showToast(lang === 'en' ? 'Check the payment details' : 'পেমেন্টের তথ্য যাচাই করুন', 'error'); return; }
+    }
     if (!agree) { setAgreeError(true); document.getElementById('agree')?.focus(); return; }
+    if (!free && !isLiveMethod(pay)) {
+      // Demo methods never create a paid order — access is only ever granted
+      // by a verified gateway payment (lib/orderRepo.js fulfilOrder).
+      setBusy(true);
+      setTimeout(() => {
+        setBusy(false);
+        setError(lang === 'en'
+          ? 'Demo payment: card / Nagad / Rocket / Upay aren’t connected yet, so nothing was charged and no access was granted. Choose bKash to complete this purchase.'
+          : 'ডেমো পেমেন্ট: কার্ড / নগদ / রকেট / উপায় এখনো যুক্ত হয়নি — তাই কোনো টাকা কাটা হয়নি ও অ্যাক্সেস দেওয়া হয়নি। কেনা সম্পন্ন করতে bKash বেছে নিন।');
+        showToast(lang === 'en' ? 'Demo payment — not charged' : 'ডেমো পেমেন্ট — টাকা কাটা হয়নি', 'info');
+      }, 1400);
+      return;
+    }
     setBusy(true); setError(null);
     try {
       const res = await fetch('/api/orders', {
@@ -90,10 +110,7 @@ export default function CheckoutForm({ lang, items, payable, initialQuote, payme
         {!free && payable.length > 0 && (
           <div className="surface surface-pad stack" style={{ '--gap': '12px' }}>
             <h3 className="h4">{c.payWith}</h3>
-            <div className="row" style={{ padding: 12, border: '1px solid var(--brand)', borderRadius: 'var(--r-md)', background: 'var(--brand-tint)' }}>
-              <span className="badge" style={{ background: 'var(--bkash)', color: '#fff' }}>bKash</span>
-              <span className="small" style={{ color: 'var(--ink-2)' }}>{c.bkashNote}</span>
-            </div>
+            <PaymentMethods value={pay} onChange={(v) => { setPay(v); setPayErrors({}); }} errors={payErrors} lang={lang} />
             {!paymentsAvailable && <div className="notice notice-warn" role="alert"><Icon name="alert" size={18} />{c.err_payments_unavailable}</div>}
           </div>
         )}
@@ -132,10 +149,10 @@ export default function CheckoutForm({ lang, items, payable, initialQuote, payme
         {agreeError && <p id="agree-err" className="field-error" role="alert">{c.required}</p>}
 
         {error && <div className="notice notice-danger" role="alert"><Icon name="alert" size={18} />{error}</div>}
-        <button type="button" className={`btn btn-lg btn-block ${free ? 'btn-primary' : 'btn-bkash'}`} onClick={submit}
+        <button type="button" className={`btn btn-lg btn-block ${free || !isLiveMethod(pay) ? 'btn-primary' : 'btn-bkash'}`} onClick={submit}
           disabled={busy || !payable.length || (!free && !paymentsAvailable)} aria-busy={busy}>
           {busy && <span className="spinner" aria-hidden="true" />}
-          {busy ? (free ? c.processing : c.redirecting) : free ? c.confirmFree : c.payBkash(num(lang, total))}
+          {busy ? (free ? c.processing : isLiveMethod(pay) ? c.redirecting : c.processing) : free ? c.confirmFree : isLiveMethod(pay) ? c.payBkash(num(lang, total)) : `${lang === 'en' ? 'Pay' : 'পেমেন্ট করুন'} ${taka(lang, total)} · ${lang === 'en' ? 'demo' : 'ডেমো'}`}
         </button>
         <p className="xsmall muted row" style={{ alignItems: 'flex-start', '--gap': '6px' }}><Icon name="shield" size={14} style={{ marginTop: 2 }} />{c.accessNote}</p>
       </aside>

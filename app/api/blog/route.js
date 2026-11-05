@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { errResponse } from '@/lib/repo';
 import { getPublishedPosts, getAllPosts, createPost, updatePost, deletePost } from '@/lib/blogRepo';
-import { requireRole, currentSession } from '@/lib/auth';
+import { currentSession, requireStaffSection } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request) {
   try {
     if (request.nextUrl.searchParams.get('all') === '1') {
-      const s = currentSession();
+      const s = await currentSession();
       if (!s || !['owner', 'superadmin'].includes(s.role)) return NextResponse.json(await getPublishedPosts());
       return NextResponse.json(await getAllPosts());
     }
@@ -19,14 +19,14 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  try { requireRole('owner', 'superadmin'); return NextResponse.json(await createPost(await request.json()), { status: 201 }); }
+  try { await requireStaffSection('blog', 'manage'); return NextResponse.json(await createPost(await request.json()), { status: 201 }); }
   catch (e) { return errResponse(e); }
 }
 export async function PATCH(request) {
-  try { requireRole('owner', 'superadmin'); return NextResponse.json(await updatePost(await request.json())); }
+  try { await requireStaffSection('blog', 'manage'); return NextResponse.json(await updatePost(await request.json())); }
   catch (e) { return errResponse(e); }
 }
 export async function DELETE(request) {
-  try { requireRole('owner', 'superadmin'); return NextResponse.json(await deletePost(await request.json())); }
+  try { await requireStaffSection('blog', 'manage'); return NextResponse.json(await deletePost(await request.json())); }
   catch (e) { return errResponse(e); }
 }

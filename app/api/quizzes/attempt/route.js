@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 // The student is taken from the session — never trusted from the body.
 export async function POST(request) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     if (!session.studentId) throw new HttpError(403, { error: 'not_a_student' });
     const body = await request.json();
     const { ctx } = await assertLessonAccess(session, body.lessonId);

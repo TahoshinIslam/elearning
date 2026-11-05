@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { errResponse } from '@/lib/repo';
 import { createMessage, getMessages, markMessageRead } from '@/lib/contactRepo';
-import { requireRole } from '@/lib/auth';
+import { requireStaffSection } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +13,10 @@ export async function POST(request) {
 
 // GET / PATCH are admin-only (the owner inbox).
 export async function GET() {
-  try { requireRole('owner', 'superadmin'); return NextResponse.json(await getMessages()); }
+  try { await requireStaffSection('messages', 'view'); return NextResponse.json(await getMessages()); }
   catch (e) { return errResponse(e); }
 }
 export async function PATCH(request) {
-  try { requireRole('owner', 'superadmin'); return NextResponse.json(await markMessageRead(await request.json())); }
+  try { await requireStaffSection('messages', 'manage'); return NextResponse.json(await markMessageRead(await request.json())); }
   catch (e) { return errResponse(e); }
 }

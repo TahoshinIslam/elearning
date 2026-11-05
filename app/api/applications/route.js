@@ -6,12 +6,12 @@ export const dynamic = 'force-dynamic';
 
 // Own applications for a student; staff see all.
 export async function GET(request) {
-  try { const { sp } = scopeToCaller(request.nextUrl.searchParams); return NextResponse.json(await getApplications(sp)); } catch (e) { return errResponse(e); }
+  try { const { sp } = await scopeToCaller(request.nextUrl.searchParams); return NextResponse.json(await getApplications(sp)); } catch (e) { return errResponse(e); }
 }
 // Applies as the signed-in student only (never a body-supplied studentId).
 export async function POST(request) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     if (!session.studentId) throw new HttpError(403, { error: 'not_a_student' });
     const body = await request.json();
     const list = await applyJob({ jobId: body.jobId, studentId: session.studentId, studentName: session.name });
@@ -19,5 +19,5 @@ export async function POST(request) {
   } catch (e) { return errResponse(e); }
 }
 export async function PATCH(request) {
-  try { requireRole('owner','superadmin'); return NextResponse.json(await setApplicationStatus(await request.json())); } catch (e) { return errResponse(e); }
+  try { await requireRole('owner','superadmin'); return NextResponse.json(await setApplicationStatus(await request.json())); } catch (e) { return errResponse(e); }
 }

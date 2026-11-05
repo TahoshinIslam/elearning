@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 // POST /api/assignments  { moduleId, title }  → add an assignment lesson (teacher/owner)
 export async function POST(request) {
   try {
-    requireRole('teacher', 'owner', 'superadmin');
+    await requireRole('teacher', 'owner', 'superadmin');
     return NextResponse.json(await createAssignment(await request.json()), { status: 201 });
   } catch (e) { return errResponse(e); }
 }

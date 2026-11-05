@@ -4,6 +4,7 @@ import { findUserByEmail } from '@/lib/authRepo';
 import { verifyPassword, sessionFromUser, setSessionCookie } from '@/lib/auth';
 import { recordAudit } from '@/lib/auditLog';
 import { rateLimit, clientIp, LIMITS } from '@/lib/rateLimit';
+import { visitorIdFromCookies, linkVisitorToUser } from '@/lib/trackingRepo';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,7 @@ export async function POST(request) {
       throw new HttpError(403, { error: 'account_disabled' });
     }
 
+    await linkVisitorToUser(visitorIdFromCookies(), user.id).catch(() => {});
     const session = sessionFromUser(user);
     const res = NextResponse.json({ user: session });
     setSessionCookie(res, session);

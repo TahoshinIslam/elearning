@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // Preview only — no redemption happens here.
 export async function POST(request) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     const { code, amount } = await request.json();
     return NextResponse.json(await validateCoupon(code, amount, session));
   } catch (e) { return errResponse(e); }

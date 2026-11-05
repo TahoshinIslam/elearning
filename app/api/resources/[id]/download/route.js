@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // storage key). ?redirect=1 sends the browser straight to it.
 export async function GET(request, { params }) {
   try {
-    const result = await getResourceDownload(currentSession(), Number(params.id));
+    const result = await getResourceDownload(await currentSession(), Number(params.id));
     if (request.nextUrl.searchParams.get('redirect') === '1') return NextResponse.redirect(new URL(result.url, request.url));
     return NextResponse.json(result);
   } catch (e) { return errResponse(e); }

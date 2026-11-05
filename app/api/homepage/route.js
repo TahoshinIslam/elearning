@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { errResponse } from '@/lib/repo';
 import { getHomepage, saveSection } from '@/lib/homepageRepo';
-import { requireRole } from '@/lib/auth';
+import { requireStaffSection } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,7 @@ export async function GET() {
 // PATCH → owner/superadmin save a section  { section, data }.
 export async function PATCH(request) {
   try {
-    requireRole('owner', 'superadmin');
+    await requireStaffSection('homepage', 'manage');
     return NextResponse.json(await saveSection(await request.json()));
   } catch (e) { return errResponse(e); }
 }

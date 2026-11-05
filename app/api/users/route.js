@@ -1,30 +1,41 @@
 import { NextResponse } from 'next/server';
-import { errResponse } from '@/lib/repo';
-import { listUsers, setUserRole, setUserStatus, setUserSections, createStaff } from '@/lib/authRepo';
-import { requireRole } from '@/lib/auth';
+import { errResponse, HttpError } from '@/lib/repo';
+import { listUsers, setUserRole, setUserStatus, setUserSections, createAccount } from '@/lib/authRepo';
+import { requireRole, revokeSessions } from '@/lib/auth';
+import { recordAudit } from '@/lib/auditLog';
 
 export const dynamic = 'force-dynamic';
 
-// Unified user/role management (owner/superadmin).
+// Account & access management — owner/superadmin only (never grantable, so
+// nobody can hand themselves more access).
 export async function GET() {
-  try { requireRole('owner', 'superadmin'); return NextResponse.json(await listUsers()); }
+  try { await requireRole('owner', 'superadmin'); return NextResponse.json(await listUsers()); }
   catch (e) { return errResponse(e); }
 }
 
-// POST { name, email, password, sections[] } → create a teacher (staff) account
+// POST { name, email, password, role, grants{section:level} } → create an account
+// POST { id, action: 'revoke_sessions' } → sign that user out everywhere
 export async function POST(request) {
   try {
-    requireRole('owner', 'superadmin');
-    return NextResponse.json(await createStaff(await request.json()), { status: 201 });
+    const session = await requireRole('owner', 'superadmin');
+    const body = await request.json();
+    if (body.action === 'revoke_sessions') {
+      const id = Number(body.id);
+      if (!id) throw new HttpError(400, { error: 'id_required' });
+      await revokeSessions(id);
+      await recordAudit({ session, action: 'sessions_revoked', targetType: 'user', targetId: id });
+      return NextResponse.json({ ok: true });
+    }
+    return NextResponse.json(await createAccount(session, body), { status: 201 });
   } catch (e) { return errResponse(e); }
 }
 
-// PATCH { id, role } | { id, status } | { id, sections[] }
+// PATCH { id, role } | { id, status } | { id, grants } | { id, sections[] }
 export async function PATCH(request) {
   try {
-    const session = requireRole('owner', 'superadmin');
+    const session = await requireRole('owner', 'superadmin');
     const body = await request.json();
-    if (body.sections !== undefined) return NextResponse.json(await setUserSections(body));
+    if (body.grants !== undefined || body.sections !== undefined) return NextResponse.json(await setUserSections(session, body));
     if (body.status !== undefined) return NextResponse.json(await setUserStatus(session, body));
     return NextResponse.json(await setUserRole(session, body));
   } catch (e) { return errResponse(e); }

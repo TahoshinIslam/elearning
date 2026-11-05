@@ -1,8 +1,14 @@
 // Browser-side helpers for signed uploads (S3/R2 presigned PUT or the local
 // provider's /api/storage/upload/<token>). XHR so we can report progress.
-export function putFile(url, file, contentType, onProgress) {
+// `signal` (an AbortSignal) cancels an in-flight upload.
+export function putFile(url, file, contentType, onProgress, signal) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    if (signal) {
+      if (signal.aborted) return reject(Object.assign(new Error('upload_cancelled'), { cancelled: true }));
+      signal.addEventListener('abort', () => xhr.abort(), { once: true });
+    }
+    xhr.onabort = () => reject(Object.assign(new Error('upload_cancelled'), { cancelled: true }));
     xhr.open('PUT', url);
     xhr.setRequestHeader('Content-Type', contentType);
     xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100)); };

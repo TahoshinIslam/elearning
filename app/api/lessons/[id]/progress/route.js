@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 // played ranges — see lib/videoRepo.js saveProgress / lib/watchRanges.js.
 export async function POST(request, { params }) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     rateLimit(`progress:${session.id}`, LIMITS.progress);
     // sendBeacon posts text/plain; parse the body ourselves either way.
     const body = JSON.parse((await request.text()) || '{}');

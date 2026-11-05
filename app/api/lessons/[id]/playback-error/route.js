@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 // tokens are accepted or logged, only the media error code and context).
 export async function POST(request, { params }) {
   try {
-    const session = currentSession();
+    const session = await currentSession();
     rateLimit(`playback-error:${session?.id || clientIp()}`, { limit: 30, windowMs: 10 * 60_000 });
     const body = await request.json().catch(() => ({}));
     logger.warn('video_playback_error', {

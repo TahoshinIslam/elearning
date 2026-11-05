@@ -13,7 +13,7 @@ export async function GET(request) {
     if (!lessonId) throw new HttpError(400, { error: 'lessonId_required' });
     // Same rule as the lesson content: preview lessons are public, the rest
     // need enrollment (or course-manager access).
-    await assertLessonAccess(currentSession(), lessonId);
+    await assertLessonAccess(await currentSession(), lessonId);
     return NextResponse.json(await getThread(lessonId));
   } catch (e) { return errResponse(e); }
 }
@@ -21,7 +21,7 @@ export async function GET(request) {
 // POST /api/qa  { lessonId, body }  → ask a question (any signed-in user)
 export async function POST(request) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     const body = await request.json();
     await assertLessonAccess(session, body.lessonId);
     return NextResponse.json(await askQuestion(session, body), { status: 201 });

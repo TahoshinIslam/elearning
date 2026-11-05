@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 // Always the caller's own data; there is no studentId param to spoof.
 export async function GET() {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     return NextResponse.json(await getMyLearning(session));
   } catch (e) { return errResponse(e); }
 }

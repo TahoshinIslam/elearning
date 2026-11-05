@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 // same learner outline as GET /api/learn/[slug] (with resumeLessonId).
 export async function GET(request, { params }) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     const course = await getCourseContext(Number(params.id));
     if (!course) throw new HttpError(404, { error: 'course_not_found' });
     return NextResponse.json(await getLearnerCourse(session, course.slug));

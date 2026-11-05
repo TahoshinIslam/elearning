@@ -13,15 +13,15 @@ export async function POST(request, { params }) {
     const body = await request.json();
     const courseId = Number(params.id);
     if (body.action === 'submit') {
-      const session = requireRole('owner', 'superadmin');
+      const session = await requireRole('owner', 'superadmin');
       return NextResponse.json(await submitForReview(session, courseId));
     }
     if (body.action === 'approve') {
-      const session = requireRole('superadmin');
+      const session = await requireRole('superadmin');
       return NextResponse.json(await approveReview(session, courseId));
     }
     if (body.action === 'reject') {
-      const session = requireRole('superadmin');
+      const session = await requireRole('superadmin');
       return NextResponse.json(await rejectReview(session, courseId, body.note));
     }
     return NextResponse.json({ error: 'invalid_action' }, { status: 400 });

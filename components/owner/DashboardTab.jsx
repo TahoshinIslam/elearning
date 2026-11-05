@@ -5,13 +5,17 @@ import { useApp } from '@/context/AppContext';
 import Icon from '@/components/Icon';
 import { useAdminData } from '@/components/owner/useAdminData';
 import { taka, num, dateLabel } from '@/lib/copy';
+import { ActivityList } from '@/components/admin/ActivityTab';
+import { canAccess } from '@/lib/rbac';
 
 // Overview of real activity only (lib/adminOverview.js) — no seeded or
 // estimated numbers.
 export default function DashboardTab() {
-  const { lang } = useApp();
+  const { lang, auth } = useApp();
   const en = lang === 'en';
   const { data: d, loading, error, reload } = useAdminData('/api/admin/overview');
+  const seeActivity = canAccess(auth, 'activity', 'view');
+  const act = useAdminData(seeActivity ? '/api/admin/activity?limit=8&days=14' : '/api/auth/me');
 
   if (loading) return <div className="stat-tiles">{[0, 1, 2, 3].map((i) => <div key={i} className="surface stat-tile"><div className="skeleton" style={{ height: 30, width: '50%' }} /><div className="skeleton" style={{ height: 12, width: '70%', marginTop: 10 }} /></div>)}</div>;
   if (error || !d) return <div className="state surface" role="alert"><p>{en ? 'Couldn’t load the overview.' : 'ওভারভিউ লোড করা যায়নি।'}</p><button type="button" className="btn btn-secondary btn-sm" onClick={reload}><Icon name="refresh" size={14} />{en ? 'Try again' : 'আবার চেষ্টা করুন'}</button></div>;
@@ -73,6 +77,13 @@ export default function DashboardTab() {
           </section>
         </div>
       </div>
+      {seeActivity && (
+        <section className="surface" aria-labelledby="dash-act">
+          <div className="surface-head"><h2 id="dash-act" className="h4">{en ? 'Recent activity' : 'সাম্প্রতিক কার্যক্রম'}</h2><a href="/owner?section=activity" className="btn btn-ghost btn-sm">{en ? 'See all' : 'সব দেখুন'}<Icon name="arrowRight" size={14} /></a></div>
+          {act.loading && !act.data ? <div className="stack surface-pad">{[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 40 }} />)}</div>
+            : Array.isArray(act.data) ? <ActivityList items={act.data} lang={lang} compact /> : null}
+        </section>
+      )}
       <p className="xsmall muted">{en ? 'All-time paid revenue: ' : 'মোট পরিশোধিত আয়: '}<span className="tabular">{taka(lang, d.sales.revenue)}</span> · {num(lang, d.sales.paid)} {en ? 'paid orders' : 'পরিশোধিত অর্ডার'}</p>
     </div>
   );

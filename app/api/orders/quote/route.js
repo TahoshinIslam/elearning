@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // already-owned and availability checks included). Nothing is stored.
 export async function POST(request) {
   try {
-    const session = requireUser();
+    const session = await requireUser();
     const body = await request.json();
     return NextResponse.json(await priceCourses(session, body.courseIds, body.couponCode));
   } catch (e) { return errResponse(e); }
