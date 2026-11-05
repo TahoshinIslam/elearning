@@ -3,7 +3,7 @@ import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/site/SiteFooter';
 import CourseCard from '@/components/ui/CourseCard';
 import Icon from '@/components/Icon';
-import { FilterPanel, MobileFilters, SortSelect, ActiveFilters, CatalogShell, CatalogResults } from '@/components/catalog/CatalogControls';
+import { FilterPanel, MobileFilters, SortSelect, ActiveFilters, CatalogShell, CatalogResults, SectionTabs } from '@/components/catalog/CatalogControls';
 import { listPublishedCourses, getCatalogFacets, parseCatalogQuery, getOwnedCourseIds } from '@/lib/catalogRepo';
 import { currentSession } from '@/lib/auth';
 import { getCopy } from '@/lib/lang';
@@ -17,7 +17,7 @@ export async function generateMetadata(props) {
   const { lang } = await getCopy();
   const c = copy(lang);
   const query = parseCatalogQuery(searchParams);
-  const filtered = query.q || query.category || query.class || query.collection || query.level || query.language || query.price || query.page > 1;
+  const filtered = query.q || query.section || query.mode || query.category || query.class || query.collection || query.level || query.language || query.price || query.page > 1;
   return {
     title: query.q ? `${query.q} — ${c.catalogTitle}` : c.catalogTitle,
     description: c.catalogSub,
@@ -40,7 +40,7 @@ export default async function CoursesPage(props) {
   const { lang, c } = await getCopy();
   const query = parseCatalogQuery(searchParams);
   const [result, facets, owned] = await Promise.all([
-    listPublishedCourses(query), getCatalogFacets(), getOwnedCourseIds(await currentSession())
+    listPublishedCourses(query), getCatalogFacets(query), getOwnedCourseIds(await currentSession())
   ]);
   const catOptions = facets.categories.map((x) => ({ value: x.value, label: categoryLabel(lang, x.value, x.name), count: x.count }));
   const filterProps = { lang, query, facets: { ...facets, categories: catOptions } };
@@ -53,13 +53,15 @@ export default async function CoursesPage(props) {
       <main id="main" className="container section-tight" style={{ paddingTop: 28 }}>
         <div className="page-head" style={{ marginBottom: 20 }}>
           <div>
-            <h1 className="h1">{query.q ? `“${query.q}”` : query.collection ? c[`${query.collection}Section`]
+            <h1 className="h1">{query.q ? `“${query.q}”` : query.section && facets.sections.find((x) => x.value === query.section) ? (lang === 'en' ? facets.sections.find((x) => x.value === query.section).nameEn : facets.sections.find((x) => x.value === query.section).nameBn)
+              : query.collection ? c[`${query.collection}Section`]
               : query.class ? (query.class === 'other' ? c.otherCourses : facets.classesAll.find((x) => x.value === query.class)?.name || c.catalogTitle)
               : query.category ? (catOptions.find((x) => x.value === query.category)?.label || c.catalogTitle) : c.catalogTitle}</h1>
             <p aria-live="polite" id="results-count">{query.q ? c.resultsFor(total, query.q) : c.results(total)}</p>
           </div>
         </div>
         <CatalogShell>
+          <SectionTabs {...filterProps} />
           <aside className="filters" aria-label={c.filters}>
             <FilterPanel {...filterProps} />
           </aside>

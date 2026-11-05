@@ -14,12 +14,32 @@ const TYPE_ICON = { video: 'play', pdf: 'file', quiz: 'help', assignment: 'edit'
 export default function Curriculum({ modules, lang, owned, slug, completedIds = [], totalSeconds, lessonCount }) {
   const c = copy(lang);
   const done = new Set(completedIds);
-  const items = modules.map((m) => ({
+  const en = lang === 'en';
+  const bnNum = (n) => (en ? String(n) : String(n).replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[d]));
+  const items = modules.map((m, mi) => ({
     id: m.id,
-    title: m.title,
+    style: { '--step': `"${bnNum(mi + 1)}"` },
+    title: (
+      <span className="tl-head">
+        <span className="tl-kicker">{en ? `Chapter ${mi + 1}` : `অধ্যায় ${bnNum(mi + 1)}`}{m.when && <span className="tl-when"><Icon name="calendar" size={13} />{m.when}</span>}</span>
+        <span className="tl-title">{m.title}</span>
+      </span>
+    ),
     meta: `${owned ? `${m.lessons.filter((l) => done.has(l.id)).length}/${m.lessons.length} · ` : ''}${c.lessonsN(m.lessons.length)}${m.durationSeconds ? ` · ${duration(lang, m.durationSeconds)}` : ''}`,
     flush: true,
     content: (
+      <>
+      {(m.summary || m.outcomes?.length > 0) && (
+        <div className="tl-about">
+          {m.summary && <p className="tl-summary">{m.summary}</p>}
+          {m.outcomes?.length > 0 && (
+            <div className="tl-outcomes">
+              <strong>{en ? 'After this chapter you can' : 'এই অধ্যায় শেষে আপনি পারবেন'}</strong>
+              <ul>{m.outcomes.map((o) => <li key={o}><Icon name="check" size={14} />{o}</li>)}</ul>
+            </div>
+          )}
+        </div>
+      )}
       <ul style={{ listStyle: 'none', margin: 0, padding: '0 0 6px' }}>
         {m.lessons.map((l) => {
           const meta = (l.durationSeconds || l.durationLabel) && <span className="dur">{l.durationSeconds ? clock(l.durationSeconds) : l.durationLabel}</span>;
@@ -51,10 +71,12 @@ export default function Curriculum({ modules, lang, owned, slug, completedIds = 
         })}
         {!m.lessons.length && <li className="lesson-row muted small">{c.noLessonsYet}</li>}
       </ul>
+      </>
     )
   }));
   return (
     <Accordion
+      className="timeline"
       items={items}
       defaultOpen={modules.slice(0, 1).map((m) => m.id)}
       renderControls={({ setAll, allOpen }) => (

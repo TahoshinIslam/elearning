@@ -9,6 +9,7 @@ import TabIndicator from '@/components/ui/TabIndicator';
 import ImageDropzone, { ImageSizeGuide } from '@/components/ui/ImageDropzone';
 import { IMAGE_SPECS } from '@/lib/imageSpecs';
 import CurriculumEditor from '@/components/owner/builder/CurriculumEditor';
+import CourseSectionsPicker from '@/components/owner/builder/CourseSectionsPicker';
 import { S, errText } from '@/components/owner/builder/strings';
 import { api as http, putFile } from '@/components/owner/builder/upload';
 import { num, taka, dateLabel } from '@/lib/copy';
@@ -16,6 +17,7 @@ import { discounted, offerMatches } from '@/lib/offerMath';
 import { useFlash } from '@/components/ui/motion';
 
 const MODES = ['recorded', 'live', 'hybrid', 'workshop', 'webinar', 'free'];
+import { MODE_LABEL } from '@/lib/modes';
 
 function toForm(c) {
   return {
@@ -247,7 +249,7 @@ export default function CourseEditor({ course, onBack }) {
                   <Field id="c-level" label={s.level}><input id="c-level" className="input" value={form.level} onChange={set('level')} maxLength={128} list="level-options" /></Field>
                   <Field id="c-lang" label={s.language}><input id="c-lang" className="input" value={form.language} onChange={set('language')} maxLength={64} list="lang-options" /></Field>
                   <Field id="c-mode" label={s.mode}>
-                    <select id="c-mode" className="select" value={form.mode} onChange={set('mode')}>{MODES.map((m) => <option key={m} value={m}>{m}</option>)}</select>
+                    <select id="c-mode" className="select" value={form.mode} onChange={set('mode')}>{MODES.map((m) => <option key={m} value={m}>{(lang === 'en' ? MODE_LABEL.en : MODE_LABEL.bn)[m] || m}</option>)}</select>
                   </Field>
                   <Field id="c-inst" label={s.instructor}>
                     <select id="c-inst" className="select" value={form.instructorId} onChange={set('instructorId')}>
@@ -259,6 +261,7 @@ export default function CourseEditor({ course, onBack }) {
                   <datalist id="level-options"><option value="Beginner" /><option value="Intermediate" /><option value="Advanced" /><option value="সকল শ্রেণি" /></datalist>
                   <datalist id="lang-options"><option value="বাংলা" /><option value="English" /></datalist>
                 </section>
+                <CourseSectionsPicker courseId={course.id} />
               </aside>
             </div>
             {saveBar}

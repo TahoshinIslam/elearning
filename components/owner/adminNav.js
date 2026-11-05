@@ -1,7 +1,7 @@
 // Admin navigation: groups, icons, labels and one-line descriptions.
 export const ADMIN_GROUPS = [
   { key: 'overview', bn: 'ওভারভিউ', en: 'Overview', items: ['dash', 'analytics', 'activity'] },
-  { key: 'catalog', bn: 'কনটেন্ট', en: 'Content', items: ['courses', 'categories', 'levels', 'paths', 'homepage', 'blog'] },
+  { key: 'catalog', bn: 'কনটেন্ট', en: 'Content', items: ['courses', 'sections', 'categories', 'levels', 'paths', 'homepage', 'blog'] },
   { key: 'sales', bn: 'বিক্রি ও প্রচার', en: 'Sales & promotion', items: ['payments', 'offers', 'coupons', 'campaigns', 'affiliates'] },
   { key: 'learners', bn: 'শিক্ষার্থী', en: 'Learners', items: ['students', 'enroll', 'reviews', 'messages'] },
   { key: 'teaching', bn: 'ক্লাস ও মূল্যায়ন', en: 'Teaching', items: ['batches', 'teachers', 'classes', 'attendance', 'submissions', 'quizzes', 'fees'] },
@@ -11,6 +11,7 @@ export const ADMIN_GROUPS = [
 export const ADMIN_SECTIONS = {
   analytics:   { icon: 'bar', bn: ['অ্যানালিটিক্স', 'আয়, ভর্তি, শেখা, ট্রাফিক ও বিজ্ঞাপনের ফলাফল'], en: ['Analytics', 'Revenue, enrollment, learning, traffic and ad results'] },
   activity:    { icon: 'clock', bn: ['সাম্প্রতিক কার্যক্রম', 'প্ল্যাটফর্মে কী ঘটছে — এক টাইমলাইনে'], en: ['Recent activity', 'Everything happening on the platform, in one timeline'] },
+  sections:    { icon: 'layers', bn: ['কোর্স সেকশন', 'স্কুল, কলেজ, ভর্তি, আসন্ন ব্যাচ — চালু/বন্ধ, হোমপেজে দেখানো ও ক্রম'], en: ['Course sections', 'School, College, Admission, Upcoming — on/off, home page and order'] },
   profile:     { icon: 'user', bn: ['আমার প্রোফাইল', 'প্রোফাইল ছবি ও পাসওয়ার্ড'], en: ['My profile', 'Profile photo and password'] },
   security:    { icon: 'shield', bn: ['নিরাপত্তা', 'ব্লক করা IP ও অ্যাকাউন্ট, রেট লিমিট ও সন্দেহজনক কার্যকলাপ'], en: ['Security', 'Blocked IPs and accounts, rate limits and suspicious activity'] },
   access:      { icon: 'lock', bn: ['অ্যাক্সেস ও অনুমতি', 'অ্যাকাউন্ট তৈরি ও কে কী দেখবে / করবে'], en: ['Access & permissions', 'Create accounts and decide who sees and does what'] },

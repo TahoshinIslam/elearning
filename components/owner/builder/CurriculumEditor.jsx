@@ -67,17 +67,28 @@ export default function CurriculumEditor({ course }) {
         <section key={m.id} className={`surface ${settled === `m${m.id}` ? 'dnd-item settled' : ''}`} aria-labelledby={`sec-${m.id}`}>
           <div className="row" style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
             {renaming?.id === m.id ? (
-              <form className="row grow" style={{ '--gap': '8px' }} onSubmit={async (e) => { e.preventDefault(); if (await run({ op: 'renameModule', moduleId: m.id, title: renaming.title }, s.saved)) setRenaming(null); }}>
-                <label htmlFor={`ren-${m.id}`} className="sr-only">{s.sectionPh}</label>
-                <input id={`ren-${m.id}`} className="input" value={renaming.title} onChange={(e) => setRenaming({ id: m.id, title: e.target.value })} autoFocus style={{ minHeight: 38 }} />
-                <button type="submit" className="btn btn-primary btn-sm">{s.save}</button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRenaming(null)}>{s.close}</button>
+              <form className="stack grow" style={{ '--gap': '10px' }} onSubmit={async (e) => { e.preventDefault(); if (await run({ op: 'renameModule', moduleId: m.id, title: renaming.title, summary: renaming.summary, outcomes: renaming.outcomes, scheduleLabel: renaming.scheduleLabel }, s.saved)) setRenaming(null); }}>
+                <div className="form-grid">
+                  <div className="field"><label htmlFor={`ren-${m.id}`}>{lang === 'en' ? 'Chapter title' : 'অধ্যায়ের নাম'}</label>
+                    <input id={`ren-${m.id}`} className="input" value={renaming.title} onChange={(e) => setRenaming({ ...renaming, title: e.target.value })} autoFocus maxLength={191} /></div>
+                  <div className="field"><label htmlFor={`when-${m.id}`}>{lang === 'en' ? 'When (timeline)' : 'কখন (টাইমলাইন)'}</label>
+                    <input id={`when-${m.id}`} className="input" value={renaming.scheduleLabel} onChange={(e) => setRenaming({ ...renaming, scheduleLabel: e.target.value })} maxLength={80} placeholder={lang === 'en' ? 'Week 1–2 · Sat & Tue 8 pm' : 'সপ্তাহ ১–২ · শনি ও মঙ্গল রাত ৮টা'} /></div>
+                </div>
+                <div className="field"><label htmlFor={`sum-${m.id}`}>{lang === 'en' ? 'Summary' : 'সংক্ষেপে'}</label>
+                  <input id={`sum-${m.id}`} className="input" value={renaming.summary} onChange={(e) => setRenaming({ ...renaming, summary: e.target.value })} maxLength={500} /></div>
+                <div className="field"><label htmlFor={`out-${m.id}`}>{lang === 'en' ? 'What learners will be able to do (one per line)' : 'এই অধ্যায় শেষে শিক্ষার্থী যা পারবে (প্রতি লাইনে একটি)'}</label>
+                  <textarea id={`out-${m.id}`} className="textarea" rows={3} value={renaming.outcomes} onChange={(e) => setRenaming({ ...renaming, outcomes: e.target.value })} maxLength={4000} /></div>
+                <div className="cluster" style={{ '--gap': '8px' }}>
+                  <button type="submit" className="btn btn-primary btn-sm">{s.save}</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRenaming(null)}>{s.close}</button>
+                </div>
               </form>
             ) : (
               <h3 id={`sec-${m.id}`} className="h4 grow" style={{ minWidth: 160 }}>
-                <button type="button" onClick={() => setRenaming({ id: m.id, title: m.title })} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', textAlign: 'left' }} aria-label={`${s.edit}: ${m.title}`}>
+                <button type="button" onClick={() => setRenaming({ id: m.id, title: m.title, summary: m.summary || '', outcomes: m.outcomes || '', scheduleLabel: m.scheduleLabel || '' })} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', textAlign: 'left' }} aria-label={`${s.edit}: ${m.title}`}>
                   {mi + 1}. {m.title} <Icon name="edit" size={14} style={{ color: 'var(--subtle)' }} />
                 </button>
+                {(m.scheduleLabel || m.summary) && <span className="xsmall muted" style={{ display: 'block', fontFamily: 'var(--font-body, inherit)', fontWeight: 500 }}>{[m.scheduleLabel, m.summary].filter(Boolean).join(' · ')}</span>}
               </h3>
             )}
             <div className="row" style={{ '--gap': '4px' }}>

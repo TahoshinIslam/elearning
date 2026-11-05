@@ -5,7 +5,7 @@ import Icon from '@/components/Icon';
 
 // items: [{ id, title, meta?, content }]. Buttons with aria-expanded /
 // aria-controls; panels are regions labelled by their trigger.
-export default function Accordion({ items, defaultOpen = [], allowMultiple = true, renderControls }) {
+export default function Accordion({ items, defaultOpen = [], allowMultiple = true, renderControls, className = '' }) {
   const [open, setOpen] = useState(() => new Set(defaultOpen));
   // Panels render on first open and then stay mounted so closing can animate.
   const [seen, setSeen] = useState(() => new Set(defaultOpen));
@@ -23,12 +23,12 @@ export default function Accordion({ items, defaultOpen = [], allowMultiple = tru
   return (
     <>
       {renderControls && renderControls({ setAll, allOpen: open.size === items.length && items.length > 0 })}
-      <div className="accordion">
+      <div className={`accordion ${className}`}>
         {items.map((item) => {
           const isOpen = open.has(item.id);
           const tid = `${base}-t-${item.id}`, pid = `${base}-p-${item.id}`;
           return (
-            <div className="accordion-item" key={item.id}>
+            <div className="accordion-item" key={item.id} style={item.style}>
               <h3 style={{ margin: 0, font: 'inherit' }}>
                 <button type="button" id={tid} className="accordion-trigger" aria-expanded={isOpen} aria-controls={pid} onClick={() => { toggleSeen(item.id); toggle(item.id); }}>
                   <Icon name="chevronDown" size={18} className="chev" />

@@ -46,6 +46,7 @@ const AnalyticsTab = load(() => import('@/components/admin/AnalyticsTab'));
 const ActivityTab = load(() => import('@/components/admin/ActivityTab'));
 const AccessTab = load(() => import('@/components/admin/AccessTab'));
 const SecurityTab = load(() => import('@/components/admin/SecurityTab'));
+const SectionsTab = load(() => import('@/components/admin/SectionsTab'));
 const ProfileTab = load(() => import('@/components/student/views/AccountView'));
 
 const COMPONENTS = {
@@ -54,7 +55,7 @@ const COMPONENTS = {
   classes: TeacherClasses, attendance: TeacherAttendance, submissions: TeacherSubmissions, quizzes: TeacherQuizzes,
   fees: FeesTab, payments: PaymentsTab, offers: OffersTab, coupons: CouponsTab, campaigns: CampaignsTab, affiliates: AffiliatesTab,
   reviews: ReviewsTab, blog: BlogTab, homepage: HomepageTab, messages: MessagesTab, reports: ReportsTab,
-  users: UsersTab, announce: AnnouncementComposer, settings: SettingsTab, profile: ProfileTab
+  users: UsersTab, announce: AnnouncementComposer, settings: SettingsTab, profile: ProfileTab, sections: SectionsTab
 };
 const NAV_KEY = 'leo_admin_nav_collapsed';
 

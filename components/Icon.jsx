@@ -1,6 +1,15 @@
 // Lightweight inline-SVG icon set (no external dependency) used to replace emojis
 // across the UI. Icons inherit `currentColor` and scale with the `size` prop.
 const PATHS = {
+  send: 'M22 2L11 13M22 2l-7 20-4-9-9-4z',
+  flag: 'M4 22V4M4 4h13l-2 4 2 4H4',
+  calendar: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4',
+  code: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16',
+  newspaper: 'M4 4h13v16H6a2 2 0 0 1-2-2zM17 8h3v10a2 2 0 0 1-2 2M7 8h7M7 12h7M7 16h4',
+  broadcast: 'M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8',
+  share: 'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4',
+  sun: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
+  moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
   // social (simple stroke glyphs, not official logos)
   facebook: 'M15 3h-2.5A4.5 4.5 0 0 0 8 7.5V10H5.5v3.5H8V21h3.5v-7.5H14l.5-3.5h-3V7.8c0-.5.4-.8.8-.8H15z',
   whatsapp: 'M3.5 20.5l1.3-4.3A8.5 8.5 0 1 1 8 19.3zM9 8.5c0 3.4 2.9 6.5 6.4 6.5l1.1-1.6-2-1-1 .8c-1-.4-1.9-1.3-2.4-2.4l.8-1-1-2-1.6 1.1',

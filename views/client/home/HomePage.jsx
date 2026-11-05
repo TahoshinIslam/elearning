@@ -6,8 +6,8 @@ import CourseCover, { toneFor } from '@/components/ui/CourseCover';
 import Icon from '@/components/Icon';
 import Reveal from '@/components/ui/Reveal';
 import PromoCarousel from '@/components/home/PromoCarousel';
-import PathCard from '@/components/ui/PathCard';
-import { getFeaturedCourses, getNewArrivals, getUpcomingCourses, getPopularCourses, getCatalogFacets, getPlatformStats, getOwnedCourseIds, getFeaturedInstructors, getCoursesBySubjects, getClassLevels, getPublicPaths, catalogContext } from '@/lib/catalogRepo';
+import { getFeaturedCourses, getPopularCourses, getCatalogFacets, getPlatformStats, getOwnedCourseIds, getFeaturedInstructors, catalogContext } from '@/lib/catalogRepo';
+import { getHomeSections, listPublicSections } from '@/lib/sectionRepo';
 import { getActiveCampaigns } from '@/lib/campaignRepo';
 import { getHomepage } from '@/lib/homepageRepo';
 import { currentSession } from '@/lib/auth';
@@ -22,16 +22,16 @@ export default async function HomePage() {
   const { lang, c } = await getCopy();
   const session = await currentSession();
   const ctx = await catalogContext();
-  const [featured, fresh, upcoming, popular, facets, stats, owned, instructors, cms, slides, classLevels, paths] = await Promise.all([
-    getFeaturedCourses(8, ctx), getNewArrivals(8, ctx), getUpcomingCourses(8, ctx), getPopularCourses(8, ctx),
-    getCatalogFacets(), getPlatformStats(), getOwnedCourseIds(session), getFeaturedInstructors(8),
-    getHomepage().catch(() => ({})), getActiveCampaigns({ kind: 'slide', page: 'home', session }).catch(() => []), getClassLevels(), getPublicPaths(ctx)
+  const [featured, popular, stats, owned, instructors, cms, slides, homeSections, allSections] = await Promise.all([
+    getFeaturedCourses(5, ctx), getPopularCourses(8, ctx), getPlatformStats(), getOwnedCourseIds(session), getFeaturedInstructors(8),
+    getHomepage().catch(() => ({})), getActiveCampaigns({ kind: 'slide', page: 'home', session }).catch(() => []),
+    getHomeSections(), listPublicSections()
   ]);
-  // One row per subject (admin order), for subjects that have courses.
-  const rowSubjects = facets.categories.slice(0, 6);
-  const bySubject = await getCoursesBySubjects(rowSubjects.map((x) => x.value), 8, ctx);
+  // Quick filters for each home section: the classes and subjects its courses cover.
+  const sectionFacets = await Promise.all(homeSections.map((sec) => getCatalogFacets({ section: sec.slug })));
+  const en = lang === 'en';
   const grid = (list, priorityFirst = false) => (
-    <ul className="course-grid" data-n={Math.min(list.length, 4)}>
+    <ul className="course-grid">
       {list.map((course, i) => (
         <li key={course.id}><CourseCard course={course} lang={lang} owned={owned.has(course.id)} categoryLabel={categoryLabel(lang, course.category, course.categoryName)} priority={priorityFirst && i < 2} /></li>
       ))}
@@ -59,7 +59,7 @@ export default async function HomePage() {
   }));
   const carousel = slides.length ? slides : courseSlides;
   // Three hero tiles: featured first, topped up from popular and newest.
-  const mosaic = [...featured, ...popular, ...fresh].filter((x, i, all) => all.findIndex((y) => y.id === x.id) === i).slice(0, 3);
+  const mosaic = [...featured, ...popular].filter((x, i, all) => all.findIndex((y) => y.id === x.id) === i).slice(0, 3);
   // Headline: the last clause (after "—" or the last comma) becomes the
   // tilted highlight sticker, e.g. "… — [নিজের গতিতে।]".
   const heroTitle = String(hero.title || c.heroTitle || '').trim();
@@ -88,22 +88,16 @@ export default async function HomePage() {
               <h1 className="display-1" style={{ '--i': 0 }}>
                 {headMain}{headMark && <>{' '}<span className="sticker">{headMark}</span></>}
               </h1>
-              <form role="search" action="/courses" method="get" className="hero-search" style={{ '--i': 1 }}>
-                <label htmlFor="hero-q" className="sr-only">{c.search}</label>
-                <Icon name="search" size={20} className="hero-search-icon" />
-                <input id="hero-q" name="q" type="search" className="input" placeholder={c.searchPlaceholder} autoComplete="off" enterKeyHint="search" />
-                <button type="submit" className="btn btn-primary btn-lg">{c.search}</button>
-              </form>
-              {facets.categories.length > 0 && (
-                <ul className="hero-chips" style={{ '--i': 2 }} aria-label={c.subjectSection}>
-                  {facets.categories.slice(0, 5).map((cat) => (
-                    <li key={cat.value}><Link href={`/courses?category=${encodeURIComponent(cat.value)}`} className="chip-link">{categoryLabel(lang, cat.value, cat.name)}</Link></li>
+              {allSections.length > 0 && (
+                <ul className="hero-chips" style={{ '--i': 1 }} aria-label={c.catalogTitle}>
+                  {allSections.slice(0, 6).map((sec) => (
+                    <li key={sec.slug}><Link href={`/courses?section=${sec.slug}`} className="chip-link" style={{ '--tone': `var(--c-${sec.tone})` }}><Icon name={sec.icon} size={15} />{en ? sec.nameEn : sec.nameBn}</Link></li>
                   ))}
                 </ul>
               )}
               <div className="cluster" style={{ '--gap': '12px', '--i': 3 }}>
                 <Link href="/courses" className="btn btn-primary btn-lg">{c.heroBrowse}<Icon name="arrowRight" size={18} /></Link>
-                {facets.price.free > 0 && <Link href="/courses?price=free" className="btn btn-secondary btn-lg">{c.heroFree}</Link>}
+                <Link href="/courses?price=free" className="btn btn-secondary btn-lg">{c.heroFree}</Link>
               </div>
               {statItems.length > 0 && (
                 <dl className="stat-row" style={{ margin: '6px 0 0', '--i': 3 }}>
@@ -125,12 +119,12 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {facets.categories.length > 0 && (
+        {allSections.length > 0 && (
           <div className="ticker" aria-hidden="true">
             <div className="ticker-track">
               {[0, 1].map((k) => (
                 <div key={k} style={{ display: 'flex' }}>
-                  {[...facets.categories.map((cat) => categoryLabel(lang, cat.value, cat.name)), ...statItems.map(([n, l]) => `${num(lang, n)} ${l}`)].concat(facets.categories.length < 4 ? facets.categories.map((cat) => categoryLabel(lang, cat.value, cat.name)) : []).map((t, i) => <span key={`${k}-${i}`}>{t}</span>)}
+                  {[...allSections.map((sec) => (en ? sec.nameEn : sec.nameBn)), ...statItems.map(([n, l]) => `${num(lang, n)} ${l}`)].concat(allSections.length < 5 ? allSections.map((sec) => (en ? sec.nameEn : sec.nameBn)) : []).map((t, i) => <span key={`${k}-${i}`}>{t}</span>)}
                 </div>
               ))}
             </div>
@@ -141,121 +135,44 @@ export default async function HomePage() {
           <div className="container-wide promo-section"><PromoCarousel slides={carousel} lang={lang} /></div>
         )}
 
-        {facets.categories.length > 0 && (
-          <section className="home-section" aria-labelledby="subj-title">
-            <div className="container-wide">
-              {sectionHead('subj-title', c.subjectSection, c.subjectSub, '/courses', 'layers')}
-              <ul className="subject-grid">
-                {facets.categories.map((cat) => {
-                  const label = categoryLabel(lang, cat.value, cat.name);
-                  const tone = toneFor(cat.value);
-                  return (
-                    <li key={cat.value}>
-                      <Link href={`/courses?category=${encodeURIComponent(cat.value)}`} className="subject-tile" style={{ '--tone': tone.bg, '--tone-2': tone.bg2 }}>
-                        <span className="subject-tile-icon" aria-hidden="true">{cat.icon && !/^[a-z]/i.test(cat.icon) ? cat.icon : label.charAt(0)}</span>
-                        <span className="subject-tile-name">{label}</span>
-                        <span className="subject-tile-count">{c.coursesN(cat.count)}</span>
-                        <Icon name="arrowRight" size={18} className="subject-tile-go" />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </section>
-        )}
-
-        {(featured.length > 0 || popular.length > 0) && (
-          <section className="band band-featured" aria-labelledby="featured-title">
-            <Reveal className="container-wide">
-              {featured.length > 0
-                ? sectionHead('featured-title', c.featuredSection, c.featuredSectionSub, '/courses?collection=featured', 'star')
-                : sectionHead('featured-title', c.featuredTitle, c.featuredSub, '/courses?sort=popular', 'star')}
-              {grid(featured.length ? featured : popular, true)}
-            </Reveal>
-          </section>
-        )}
-
-        {fresh.length > 0 && (
-          <section className="home-section" aria-labelledby="new-title">
-            <Reveal className="container-wide">
-              {sectionHead('new-title', c.newSection, c.newSectionSub, '/courses?collection=new', 'zap')}
-              {grid(fresh)}
-            </Reveal>
-          </section>
-        )}
-
-        {classLevels.length > 0 && (
-          <section className="home-section home-section-soft" aria-labelledby="class-title">
-            <div className="container-wide">
-              {sectionHead('class-title', c.classSection, c.classSub, null, 'book')}
-              <ul className="class-grid">
-                {classLevels.map((cl) => {
-                  const n = /^class-(\d+)$/.exec(cl.value)?.[1];
-                  const tone = toneFor(`class-${cl.value}`);
-                  const short = n ? num(lang, Number(n)) : cl.name.split(/[\s(]/)[0];
-                  return (
-                    <li key={cl.value}>
-                      <Link href={`/courses?class=${encodeURIComponent(cl.value)}`} className={`class-tile ${cl.count ? '' : 'is-empty'}`} style={{ '--tone': tone.bg, '--tone-2': tone.bg2 }}>
-                        <span className={`class-num ${n ? '' : 'is-word'}`} aria-hidden="true">{short}</span>
-                        <span className="class-name">{cl.name}</span>
-                        <span className="class-count">{cl.count ? c.coursesN(cl.count) : c.comingSoon}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-                {facets.nonClassCount > 0 && (
-                  <li>
-                    <Link href="/courses?class=other" className="class-tile" style={{ '--tone': '#B69CFF', '--tone-2': '#B69CFF' }}>
-                      <span className="class-num" aria-hidden="true"><Icon name="grid" size={22} /></span>
-                      <span className="class-name">{c.otherCourses}</span>
-                      <span className="class-count">{c.coursesN(facets.nonClassCount)}</span>
-                    </Link>
-                  </li>
-                )}
-              </ul>
-            </div>
-          </section>
-        )}
-
-        {rowSubjects.filter((sub) => bySubject[sub.value]?.length).map((sub) => {
-          const label = categoryLabel(lang, sub.value, sub.name);
-          const tone = toneFor(sub.value);
+        {homeSections.map((sec, si) => {
+          const f = sectionFacets[si];
+          const title = en ? sec.nameEn : sec.nameBn;
+          const badge = en ? sec.badgeEn : sec.badgeBn;
+          const chips = [
+            ...f.classes.map((x) => ({ href: `/courses?section=${sec.slug}&class=${encodeURIComponent(x.value)}`, label: x.name, n: x.count })),
+            ...(f.classes.length ? [] : f.categories.map((x) => ({ href: `/courses?section=${sec.slug}&category=${encodeURIComponent(x.value)}`, label: categoryLabel(lang, x.value, x.name), n: x.count })))
+          ].slice(0, 10);
           return (
-            <section key={sub.value} className="home-section subject-row" style={{ '--tone': tone.bg, '--tone-2': tone.bg2, '--tone-tint': tone.tint }} aria-labelledby={`row-${sub.value}`}>
+            <section key={sec.slug} className={`home-section home-sec tone-${sec.tone} ${si % 2 ? 'home-section-soft' : ''}`} style={{ '--tone': `var(--c-${sec.tone})`, '--tone-2': `var(--c-${sec.tone}-2, var(--c-${sec.tone}))` }} aria-labelledby={`sec-${sec.slug}`}>
               <Reveal className="container-wide">
                 <div className="home-head">
                   <div className="home-head-text">
-                    <span className="home-head-icon tone" aria-hidden="true">{sub.icon && !/^[a-z]/i.test(sub.icon) ? sub.icon : label.charAt(0)}</span>
-                    <div><h2 id={`row-${sub.value}`} className="h2">{label}</h2><p>{c.coursesN(sub.count)}</p></div>
+                    <span className="home-head-icon tone" aria-hidden="true"><Icon name={sec.icon} size={22} /></span>
+                    <div>
+                      <h2 id={`sec-${sec.slug}`} className="h2">{title}{badge && <span className="home-sec-badge">{badge}</span>}</h2>
+                      {(en ? sec.blurbEn : sec.blurbBn) && <p>{en ? sec.blurbEn : sec.blurbBn}</p>}
+                    </div>
                   </div>
-                  <Link href={`/courses?category=${encodeURIComponent(sub.value)}`} className="btn btn-sm home-viewall">{c.viewAll}<Icon name="arrowRight" size={16} /></Link>
+                  <Link href={`/courses?section=${sec.slug}`} className="btn btn-sm home-viewall">{c.viewAll}<Icon name="arrowRight" size={16} /></Link>
                 </div>
-                {grid(bySubject[sub.value])}
+                {chips.length > 1 && (
+                  <ul className="home-sec-chips" aria-label={title}>
+                    {chips.map((ch) => <li key={ch.href}><Link href={ch.href} className="chip-link">{ch.label}<span className="count">{num(lang, ch.n)}</span></Link></li>)}
+                  </ul>
+                )}
+                {grid(sec.courses, si === 0)}
               </Reveal>
             </section>
           );
         })}
 
-        {upcoming.length > 0 && (
-          <section className="home-section" aria-labelledby="upc-title">
+        {!homeSections.length && (featured.length > 0 || popular.length > 0) && (
+          <section className="home-section" aria-labelledby="featured-title">
             <Reveal className="container-wide">
-              {sectionHead('upc-title', c.upcomingSection, c.upcomingSectionSub, '/courses?collection=upcoming', 'clock')}
-              {grid(upcoming)}
+              {sectionHead('featured-title', c.featuredTitle, c.featuredSub, '/courses?sort=popular', 'star')}
+              {grid(featured.length ? featured : popular, true)}
             </Reveal>
-          </section>
-        )}
-
-        {!featured.length && !popular.length && !fresh.length && (
-          <section className="section"><div className="container"><div className="surface state"><div className="state-icon"><Icon name="book" size={24} /></div><p>{c.noResultsT}</p></div></div></section>
-        )}
-
-        {paths.some((p) => p.courses.length) && (
-          <section className="home-section" aria-labelledby="paths-title">
-            <div className="container-wide">
-              {sectionHead('paths-title', c.pathsSection, c.pathsWhat, '/paths', 'compass')}
-              <ul className="path-grid">{paths.filter((p) => p.courses.length).slice(0, 3).map((p) => <li key={p.id}><PathCard path={p} lang={lang} /></li>)}</ul>
-            </div>
           </section>
         )}
 
