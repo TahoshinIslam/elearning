@@ -9,6 +9,7 @@ import BrandMark from '@/components/ui/BrandMark';
 import Drawer from '@/components/ui/Drawer';
 import { SIDEBAR_OPEN_EVENT } from '@/components/ui/useShellNav';
 import { DOCK_SEARCH_EVENT, DOCK_MENU_EVENT } from '@/components/site/MobileDock';
+import ThemeToggle from '@/components/site/ThemeToggle';
 import { usePresence } from '@/components/ui/motion';
 import CartDrawer from '@/components/CartDrawer';
 import NotificationBell from '@/components/NotificationBell';
@@ -145,6 +146,7 @@ export default function SiteHeader() {
           <button type="button" className="btn btn-ghost btn-sm desktop-only" onClick={toggleLang} aria-label={c.langSwitchLabel} lang={lang === 'bn' ? 'en' : 'bn'}>
             <Icon name="globe" size={16} />{c.langSwitch}
           </button>
+          <ThemeToggle lang={lang} />
           {cartCount > 0 && (
             <button type="button" className="btn btn-ghost btn-icon" style={{ position: 'relative' }} onClick={() => setCartOpen(true)} aria-label={`${c.cart} (${cartCount})`}>
               <Icon name="cart" size={20} /><span className="icon-badge" aria-hidden="true">{cartCount}</span>
@@ -174,6 +176,7 @@ export default function SiteHeader() {
             {auth && <Link href={homeFor} onClick={() => setNavOpen(false)}><Icon name="book" size={19} />{auth.role === 'student' ? c.myLearning : c.dashboard}</Link>}
             {auth?.role === 'student' && <Link href="/student?view=orders" onClick={() => setNavOpen(false)}><Icon name="receipt" size={19} />{c.orders}</Link>}
             <button type="button" onClick={() => { toggleLang(); setNavOpen(false); }} lang={lang === 'bn' ? 'en' : 'bn'}><Icon name="globe" size={19} />{c.langSwitch}</button>
+            <ThemeToggle lang={lang} className="drawer-theme" withLabel />
           </nav>
           <hr style={{ margin: 0 }} />
           {auth ? (

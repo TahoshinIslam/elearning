@@ -90,10 +90,10 @@ function PasswordField({ id, label, value, onChange, autoComplete, error, hint, 
 }
 
 const DEMO = [
-  { label: 'Student', email: 'student@leolearning.app' },
-  { label: 'Teacher', email: 'teacher@leolearning.app' },
-  { label: 'Owner', email: 'owner@leolearning.app' },
-  { label: 'Superadmin', email: 'superadmin@leolearning.app' }
+  { label: 'Student', bn: 'শিক্ষার্থী', email: 'student@leolearning.app' },
+  { label: 'Teacher', bn: 'শিক্ষক', email: 'teacher@leolearning.app' },
+  { label: 'Owner', bn: 'মালিক', email: 'owner@leolearning.app' },
+  { label: 'Superadmin', bn: 'সুপারঅ্যাডমিন', email: 'superadmin@leolearning.app' }
 ];
 
 export function LoginForm({ returnTo, showDemo }) {
@@ -146,7 +146,7 @@ export function LoginForm({ returnTo, showDemo }) {
         <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px dashed var(--border-strong)' }}>
           <p className="xsmall muted strong" style={{ marginBottom: 8 }}>{c.demoAccounts} (demo1234)</p>
           <div className="cluster" style={{ '--gap': '6px' }}>
-            {DEMO.map((d) => <button key={d.email} type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => submit(null, { email: d.email, password: 'demo1234' })}>{d.label}</button>)}
+            {DEMO.map((d) => <button key={d.email} type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => submit(null, { email: d.email, password: 'demo1234' })}>{lang === 'en' ? d.label : d.bn}</button>)}
           </div>
         </div>
       )}

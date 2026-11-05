@@ -53,9 +53,11 @@ export default async function RootLayout({ children }) {
   // Visitors see the countdown page; staff (and the login / dev pages they
   // need to get in) keep working.
   const blocked = maint.active && !isStaff && !/^\/(login|forgot|reset|dev)(\/|$)/.test(path);
+  const themeCookie = (await cookies()).get('leo_theme')?.value;
+  const theme = themeCookie === 'dark' || themeCookie === 'light' ? themeCookie : undefined;
   const showSplash = settings.preloader !== 'off' && !blocked && !(await cookies()).get('leo_splash') && !/^\/(owner|superadmin|learn)(\/|$)/.test(path);
   return (
-    <html lang={lang} className={`${archivoBlack.variable} ${archivo.variable} ${notoBengali.variable}`}>
+    <html lang={lang} data-theme={theme} suppressHydrationWarning className={`${archivoBlack.variable} ${archivo.variable} ${notoBengali.variable}`}>
       <body>
         <a href="#main" className="skip-link">{c.skip}</a>
         <AppProvider initialAuth={initialAuth} initialLang={lang} dict={T[lang]}>
